@@ -1,0 +1,838 @@
+/* ============================================================== */
+/* Passwire Admin Console - Main Stylesheet                       */
+/* Path: public/assets/admin/css/main.css                         */
+/* ============================================================== */
+
+html {
+    font-size: 16px;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.875rem; /* 14px */
+    line-height: 1.5;
+}
+
+code, pre {
+    font-family: 'JetBrains Mono', monospace;
+}
+
+[x-cloak] {
+    display: none !important;
+}
+
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #27272a;
+    border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #3f3f46;
+}
+
+/* Typography Harmonizer (Scaled by ~2px: 9px -> 11px, 10px -> 12px, 11px -> 12.5px) */
+.text-\[9px\] {
+    font-size: 11px !important;
+    line-height: 1rem !important;
+}
+
+.text-\[10px\] {
+    font-size: 12px !important;
+    line-height: 1.15rem !important;
+}
+
+.text-\[11px\] {
+    font-size: 12.5px !important;
+    line-height: 1.2rem !important;
+}
+
+/* ============================================================== */
+/* SweetAlert2 Zinc Minimal Dark Theme                            */
+/* ============================================================== */
+div.swal2-container .swal2-popup.omni-swal {
+    background: #121215 !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: 1.25rem !important;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.05) !important;
+    padding: 1.5rem 1.25rem 1.25rem !important;
+    max-width: 24rem !important;
+    width: 90% !important;
+    font-family: 'Inter', sans-serif !important;
+}
+
+div.swal2-container .swal2-popup.omni-swal .swal2-icon,
+div.swal2-container .swal2-popup.omni-swal .swal2-icon.swal2-warning {
+    width: 3.25rem !important;
+    height: 3.25rem !important;
+    min-width: 3.25rem !important;
+    min-height: 3.25rem !important;
+    margin: 0.15rem auto 0.85rem auto !important;
+    border: 2px solid rgba(244, 63, 94, 0.4) !important;
+    background-color: rgba(244, 63, 94, 0.08) !important;
+    border-radius: 50% !important;
+}
+
+div.swal2-container .swal2-popup.omni-swal .swal2-icon .swal2-icon-content {
+    font-size: 1.5rem !important;
+    line-height: 3.25rem !important;
+    color: #f43f5e !important;
+    font-weight: 700 !important;
+    font-family: 'Inter', sans-serif !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+div.swal2-container .swal2-popup.omni-swal .swal2-title {
+    color: #ffffff !important;
+    font-size: 1.0625rem !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.015em !important;
+    line-height: 1.35 !important;
+    padding: 0 !important;
+    margin: 0 0 0.35rem 0 !important;
+}
+
+div.swal2-container .swal2-popup.omni-swal .swal2-html-container {
+    color: #94a3b8 !important;
+    font-size: 0.8125rem !important;
+    line-height: 1.45 !important;
+    padding: 0 0.5rem !important;
+    margin: 0 0 1.25rem 0 !important;
+}
+
+div.swal2-container .swal2-popup.omni-swal .swal2-actions {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0.625rem !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+div.swal2-container .swal2-popup.omni-swal .swal2-confirm {
+    background: linear-gradient(135deg, #e11d48, #f43f5e) !important;
+    color: #ffffff !important;
+    font-size: 0.8125rem !important;
+    font-weight: 600 !important;
+    padding: 0.55rem 1.15rem !important;
+    border-radius: 0.75rem !important;
+    border: 1px solid rgba(225, 29, 72, 0.3) !important;
+    box-shadow: 0 4px 10px -2px rgba(225, 29, 72, 0.35) !important;
+    cursor: pointer !important;
+    transition: all 0.15s ease !important;
+}
+
+div.swal2-container .swal2-popup.omni-swal .swal2-confirm:hover {
+    background: linear-gradient(135deg, #be123c, #e11d48) !important;
+    box-shadow: 0 6px 14px -2px rgba(225, 29, 72, 0.45) !important;
+    transform: translateY(-1px);
+}
+
+div.swal2-container .swal2-popup.omni-swal .swal2-cancel {
+    background-color: #18181b !important;
+    color: #e4e4e7 !important;
+    font-size: 0.8125rem !important;
+    font-weight: 600 !important;
+    padding: 0.55rem 1.15rem !important;
+    border-radius: 0.75rem !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    cursor: pointer !important;
+    transition: all 0.15s ease !important;
+}
+
+div.swal2-container .swal2-popup.omni-swal .swal2-cancel:hover {
+    background-color: #27272a !important;
+    color: #ffffff !important;
+}
+
+div.swal2-container {
+    backdrop-filter: blur(6px) !important;
+    background: rgba(0, 0, 0, 0.7) !important;
+    z-index: 9999 !important;
+}
+
+/* ============================================================== */
+/* LIGHT MODE DESIGN SYSTEM (html:not(.dark))                     */
+/* ============================================================== */
+html:not(.dark) {
+    color-scheme: light;
+}
+
+html:not(.dark) body {
+    background-color: #f8fafc !important;
+    color: #0f172a !important;
+}
+
+/* Light Scrollbars */
+html:not(.dark) ::-webkit-scrollbar-thumb {
+    background: #cbd5e1 !important;
+}
+
+html:not(.dark) ::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8 !important;
+}
+
+/* Shell & Backgrounds */
+html:not(.dark) main,
+html:not(.dark) [class*="bg-[#09090b]"],
+html:not(.dark) [class*="bg-[#0c101a]"],
+html:not(.dark) [class*="bg-[#0e0e11]"],
+html:not(.dark) .bg-zinc-950,
+html:not(.dark) .bg-zinc-925 {
+    background-color: #f8fafc !important;
+}
+
+html:not(.dark) [class*="bg-[#090b10]"] {
+    background-color: #f8fafc !important;
+    background-image: radial-gradient(rgba(15, 23, 42, 0.06) 1px, transparent 1px) !important;
+}
+
+/* Sidebar & Header */
+html:not(.dark) aside.w-64,
+html:not(.dark) [class*="bg-[#10141e]"] {
+    background-color: #ffffff !important;
+    border-color: #e2e8f0 !important;
+}
+
+html:not(.dark) aside [class*="bg-[#0c101a]"] {
+    background-color: #f8fafc !important;
+    border-color: #e2e8f0 !important;
+}
+
+html:not(.dark) aside [class*="bg-[#141926]"] {
+    background-color: #ffffff !important;
+    border-color: #e2e8f0 !important;
+    color: #334155 !important;
+}
+
+html:not(.dark) aside .hover\:bg-\[\#1a2133\]:hover {
+    background-color: #f1f5f9 !important;
+}
+
+html:not(.dark) header {
+    background-color: rgba(255, 255, 255, 0.88) !important;
+    border-color: #e2e8f0 !important;
+}
+
+/* Cards, Tables, Toolbars & Panels */
+html:not(.dark) [class*="bg-[#121215]"],
+html:not(.dark) [class*="bg-[#121622]"],
+html:not(.dark) [class*="bg-[#141926]"],
+html:not(.dark) .bg-zinc-850 {
+    background-color: #ffffff !important;
+    border-color: #e2e8f0 !important;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Secondary containers & chips (like inside Matrix or Toolbars) */
+html:not(.dark) [class*="bg-[#0e0e11]"] {
+    background-color: #ffffff !important;
+    border-color: #e2e8f0 !important;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03) !important;
+}
+
+html:not(.dark) [class*="bg-[#161c2c]"] {
+    background-color: #f8fafc !important;
+    border-color: #e2e8f0 !important;
+}
+
+/* Inner Boxes inside Cards */
+html:not(.dark) [class*="bg-[#121215]"] [class*="bg-[#09090b]"],
+html:not(.dark) [class*="bg-[#121622]"] [class*="bg-[#09090b]"],
+html:not(.dark) [class*="bg-[#161c2c]"] [class*="bg-[#09090b]"],
+html:not(.dark) .bg-white [class*="bg-[#09090b]"] {
+    background-color: #f8fafc !important;
+    border-color: #e2e8f0 !important;
+}
+
+/* Badges, Pills & Status Elements */
+html:not(.dark) [class*="bg-zinc-900"],
+html:not(.dark) .bg-zinc-800,
+html:not(.dark) .bg-zinc-800\/80 {
+    background-color: #f1f5f9 !important;
+    color: #334155 !important;
+    border-color: #e2e8f0 !important;
+}
+
+/* Provider Matrix Avatar Tags */
+html:not(.dark) .w-8.h-8.bg-zinc-800 {
+    background-color: #ecfdf5 !important;
+    color: #047857 !important;
+    border-color: #d1fae5 !important;
+}
+
+/* Progress Bar Track */
+html:not(.dark) .w-24.bg-zinc-800,
+html:not(.dark) .sm\:w-36.bg-zinc-800 {
+    background-color: #e2e8f0 !important;
+}
+
+/* Action Buttons with bg-zinc-800 */
+html:not(.dark) button.bg-zinc-800,
+html:not(.dark) button[class*="bg-zinc-800"],
+html:not(.dark) a.bg-zinc-800,
+html:not(.dark) a[class*="bg-zinc-800"] {
+    background-color: #f1f5f9 !important;
+    border-color: #cbd5e1 !important;
+    color: #1e293b !important;
+}
+
+html:not(.dark) button.bg-zinc-800:hover,
+html:not(.dark) button[class*="bg-zinc-800"]:hover,
+html:not(.dark) a.bg-zinc-800:hover,
+html:not(.dark) a[class*="bg-zinc-800"]:hover {
+    background-color: #e2e8f0 !important;
+    color: #0f172a !important;
+}
+
+/* Tabs active buttons inside snippet headers */
+html:not(.dark) [class*="bg-[#09090b]"] button.bg-zinc-800 {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Segmented View Filter active pill */
+html:not(.dark) [class*="bg-[#161c2c]"] button.bg-zinc-800 {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Borders */
+html:not(.dark) [class*="border-white\/"],
+html:not(.dark) .border-white\/5,
+html:not(.dark) .border-white\/10 {
+    border-color: #e2e8f0 !important;
+}
+
+html:not(.dark) [class*="divide-white\/"] > :not([hidden]) ~ :not([hidden]) {
+    border-color: #f1f5f9 !important;
+}
+
+html:not(.dark) [class*="hover:border-white\/"]:hover {
+    border-color: #cbd5e1 !important;
+}
+
+html:not(.dark) .hover\:bg-white\/\[0\.02\]:hover,
+html:not(.dark) .hover\:bg-white\/\[0\.03\]:hover,
+html:not(.dark) .hover\:bg-white\/\[0\.05\]:hover {
+    background-color: #f8fafc !important;
+}
+
+/* Navigation Links */
+html:not(.dark) .bg-white\/\[0\.08\] {
+    background-color: #ecfdf5 !important;
+    color: #065f46 !important;
+    font-weight: 600 !important;
+}
+
+html:not(.dark) .bg-white\/\[0\.08\] i {
+    color: #059669 !important;
+}
+
+/* Primary Headings & Text */
+html:not(.dark) h1,
+html:not(.dark) h2,
+html:not(.dark) h3,
+html:not(.dark) h4,
+html:not(.dark) .text-white:not([class*="bg-emerald"]):not([class*="bg-rose"]):not([class*="bg-indigo"]):not([class*="bg-red"]):not([class*="bg-blue"]):not([class*="bg-amber"]):not([class*="bg-teal"]):not([class*="bg-gradient"]):not([class*="bg-zinc-900"]):not(.swal2-confirm):not(.keep-white) {
+    color: #0f172a !important;
+}
+
+/* Keep White Text on Colored Buttons & Badges */
+html:not(.dark) [class*="bg-rose-"],
+html:not(.dark) [class*="bg-emerald-500"],
+html:not(.dark) [class*="bg-emerald-600"],
+html:not(.dark) [class*="bg-gradient-to-"] {
+    color: #ffffff !important;
+}
+
+html:not(.dark) [class*="bg-rose-"] span,
+html:not(.dark) [class*="bg-gradient-to-"] span {
+    color: #ffffff !important;
+}
+
+/* Solid emerald buttons (e.g. Choose File) keep white text in light mode */
+html:not(.dark) button[class*="bg-emerald-500"] span,
+html:not(.dark) button[class*="bg-emerald-500"] i,
+html:not(.dark) button[class*="bg-emerald-500"] svg {
+    color: #ffffff !important;
+    stroke: #ffffff !important;
+}
+
+/* File input ::file-selector-button (Choose File) keeps white text in light mode */
+html:not(.dark) input[type="file"]::file-selector-button {
+    background-color: #059669 !important;
+    color: #ffffff !important;
+}
+
+html:not(.dark) input[type="file"]::-webkit-file-upload-button {
+    background-color: #059669 !important;
+    color: #ffffff !important;
+}
+
+/* Header Add Key button (bg-zinc-900 light / zinc-100 dark) keeps white-ish text in light mode */
+html:not(.dark) button[class*="bg-zinc-900"] {
+    background-color: #0f172a !important;
+    color: #ffffff !important;
+}
+
+html:not(.dark) button[class*="bg-zinc-900"] span,
+html:not(.dark) button[class*="bg-zinc-900"] i,
+html:not(.dark) button[class*="bg-zinc-900"] svg {
+    color: #ffffff !important;
+    stroke: #ffffff !important;
+}
+
+/* Zinc Neutral Text Hierarchy */
+html:not(.dark) .text-zinc-100,
+html:not(.dark) .text-zinc-200 {
+    color: #1e293b !important;
+}
+
+html:not(.dark) .text-zinc-300 {
+    color: #334155 !important;
+}
+
+html:not(.dark) .text-zinc-400 {
+    color: #64748b !important;
+}
+
+html:not(.dark) .text-zinc-500 {
+    color: #64748b !important;
+}
+
+html:not(.dark) .text-zinc-600 {
+    color: #94a3b8 !important;
+}
+
+/* High-Contrast Tint Adjustments */
+html:not(.dark) .text-emerald-300 {
+    color: #047857 !important;
+}
+
+html:not(.dark) .text-amber-300 {
+    color: #b45309 !important;
+}
+
+html:not(.dark) .text-indigo-300 {
+    color: #4338ca !important;
+}
+
+html:not(.dark) .text-teal-300 {
+    color: #0f766e !important;
+}
+
+/* Soft Emerald Badges & Buttons in Light Mode */
+html:not(.dark) [class*="bg-emerald-50"],
+html:not(.dark) [class*="bg-emerald-500/10"],
+html:not(.dark) [class*="bg-emerald-500/15"] {
+    background-color: #ecfdf5 !important;
+    border-color: #a7f3d0 !important;
+    color: #065f46 !important;
+}
+
+html:not(.dark) [class*="bg-emerald-50"] span,
+html:not(.dark) [class*="bg-emerald-500/10"] span,
+html:not(.dark) [class*="bg-emerald-50"] i,
+html:not(.dark) [class*="bg-emerald-500/10"] i {
+    color: #065f46 !important;
+}
+
+/* Soft Amber Badges & Buttons in Light Mode */
+html:not(.dark) [class*="bg-amber-50"],
+html:not(.dark) [class*="bg-amber-500/10"] {
+    background-color: #fffbeb !important;
+    border-color: #fde68a !important;
+    color: #92400e !important;
+}
+
+html:not(.dark) [class*="bg-amber-50"] span,
+html:not(.dark) [class*="bg-amber-500/10"] span,
+html:not(.dark) [class*="bg-amber-50"] i,
+html:not(.dark) [class*="bg-amber-500/10"] i {
+    color: #92400e !important;
+}
+
+/* Inputs, Selects & Textareas */
+html:not(.dark) input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]),
+html:not(.dark) select,
+html:not(.dark) textarea {
+    background-color: #ffffff !important;
+    border-color: #cbd5e1 !important;
+    color: #0f172a !important;
+}
+
+html:not(.dark) input::placeholder,
+html:not(.dark) textarea::placeholder {
+    color: #94a3b8 !important;
+}
+
+html:not(.dark) input:focus,
+html:not(.dark) select:focus,
+html:not(.dark) textarea:focus {
+    border-color: #10b981 !important;
+    box-shadow: 0 0 0 1px #10b981 !important;
+}
+
+/* Tables in Light Mode */
+html:not(.dark) thead,
+html:not(.dark) thead[class*="bg-[#09090b]"] {
+    background-color: #f8fafc !important;
+    border-color: #e2e8f0 !important;
+}
+
+html:not(.dark) thead th {
+    color: #475569 !important;
+}
+
+html:not(.dark) td [class*="bg-[#09090b]"] {
+    background-color: #f1f5f9 !important;
+    border-color: #e2e8f0 !important;
+    color: #047857 !important;
+}
+
+/* High-Contrast Action Buttons */
+html:not(.dark) .bg-white.text-zinc-950,
+html:not(.dark) button.bg-white.text-zinc-950,
+html:not(.dark) a.bg-white.text-zinc-950 {
+    background-color: #0f172a !important;
+    color: #ffffff !important;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Force white text + icon inside dark action buttons (light mode) */
+html:not(.dark) .bg-white.text-zinc-950 span,
+html:not(.dark) button.bg-white.text-zinc-950 span,
+html:not(.dark) a.bg-white.text-zinc-950 span,
+html:not(.dark) .bg-white.text-zinc-950 i,
+html:not(.dark) button.bg-white.text-zinc-950 i,
+html:not(.dark) a.bg-white.text-zinc-950 i,
+html:not(.dark) .bg-white.text-zinc-950 svg,
+html:not(.dark) button.bg-white.text-zinc-950 svg,
+html:not(.dark) a.bg-white.text-zinc-950 svg {
+    color: #ffffff !important;
+    stroke: #ffffff !important;
+}
+
+html:not(.dark) .bg-white.text-zinc-950:hover,
+html:not(.dark) button.bg-white.text-zinc-950:hover,
+html:not(.dark) a.bg-white.text-zinc-950:hover {
+    background-color: #1e293b !important;
+}
+
+/* Code snippets */
+html:not(.dark) pre,
+html:not(.dark) code {
+    color: #0f172a !important;
+}
+
+/* Playground Chat Window */
+html:not(.dark) .lg\:col-span-3.h-\[560px\] {
+    background-color: #f8fafc !important;
+    border-color: #e2e8f0 !important;
+}
+
+html:not(.dark) #play-chat-box [class*="bg-[#121215]"] {
+    background-color: #ffffff !important;
+    border-color: #e2e8f0 !important;
+    color: #1e293b !important;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+}
+
+html:not(.dark) .p-3[class*="bg-[#121215]"].border-t {
+    background-color: #ffffff !important;
+    border-color: #e2e8f0 !important;
+}
+
+/* Modals in Light Mode */
+html:not(.dark) [x-show="showAccountModal"] > div,
+html:not(.dark) [x-show="showProviderModal"] > div,
+html:not(.dark) [x-show="showEditProviderModal"] > div,
+html:not(.dark) [x-show="catalogModalOpen"] > div {
+    background-color: #ffffff !important;
+    border-color: #e2e8f0 !important;
+    color: #0f172a !important;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* SweetAlert2 Light Mode */
+html:not(.dark) div.swal2-container {
+    background: rgba(15, 23, 42, 0.4) !important;
+    backdrop-filter: blur(6px) !important;
+}
+
+html:not(.dark) div.swal2-container .swal2-popup.omni-swal {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05) !important;
+}
+
+html:not(.dark) div.swal2-container .swal2-popup.omni-swal .swal2-icon,
+html:not(.dark) div.swal2-container .swal2-popup.omni-swal .swal2-icon.swal2-warning {
+    border-color: rgba(244, 63, 94, 0.45) !important;
+    background-color: #fff1f2 !important;
+}
+
+html:not(.dark) div.swal2-container .swal2-popup.omni-swal .swal2-icon .swal2-icon-content {
+    color: #e11d48 !important;
+}
+
+html:not(.dark) div.swal2-container .swal2-popup.omni-swal .swal2-title {
+    color: #0f172a !important;
+}
+
+html:not(.dark) div.swal2-container .swal2-popup.omni-swal .swal2-html-container {
+    color: #64748b !important;
+}
+
+html:not(.dark) div.swal2-container .swal2-popup.omni-swal .swal2-cancel {
+    background-color: #f8fafc !important;
+    color: #334155 !important;
+    border: 1px solid #cbd5e1 !important;
+}
+
+html:not(.dark) div.swal2-container .swal2-popup.omni-swal .swal2-cancel:hover {
+    background-color: #e2e8f0 !important;
+    color: #0f172a !important;
+}
+
+/* ============================================================== */
+/* Solid Primary / Danger Buttons — FINAL OVERRIDE (Light Mode)   */
+/* Must stay at the END of file: substring selectors above like   */
+/* [class*="bg-emerald-50"] also match bg-emerald-500, so re-     */
+/* assert solid backgrounds + white text here.                    */
+/* ============================================================== */
+html:not(.dark) button.bg-emerald-500,
+html:not(.dark) a.bg-emerald-500,
+html:not(.dark) button.bg-emerald-600,
+html:not(.dark) a.bg-emerald-600 {
+    background-color: #059669 !important;
+    border-color: #059669 !important;
+    color: #ffffff !important;
+    opacity: 1 !important;
+}
+
+html:not(.dark) button.bg-emerald-500:not(:disabled),
+html:not(.dark) a.bg-emerald-500:not(:disabled) {
+    opacity: 1 !important;
+}
+
+html:not(.dark) button.bg-emerald-500:hover:not(:disabled),
+html:not(.dark) a.bg-emerald-500:hover:not(:disabled),
+html:not(.dark) button.bg-emerald-600:hover:not(:disabled),
+html:not(.dark) a.bg-emerald-600:hover:not(:disabled) {
+    background-color: #10b981 !important;
+    border-color: #10b981 !important;
+    color: #ffffff !important;
+}
+
+html:not(.dark) button.bg-emerald-500 span,
+html:not(.dark) a.bg-emerald-500 span,
+html:not(.dark) button.bg-emerald-600 span,
+html:not(.dark) a.bg-emerald-600 span,
+html:not(.dark) button.bg-emerald-500 i,
+html:not(.dark) a.bg-emerald-500 i,
+html:not(.dark) button.bg-emerald-600 i,
+html:not(.dark) a.bg-emerald-600 i,
+html:not(.dark) button.bg-emerald-500 svg,
+html:not(.dark) a.bg-emerald-500 svg,
+html:not(.dark) button.bg-emerald-600 svg,
+html:not(.dark) a.bg-emerald-600 svg {
+    color: #ffffff !important;
+    stroke: #ffffff !important;
+    opacity: 1 !important;
+}
+
+html:not(.dark) button.bg-rose-600,
+html:not(.dark) a.bg-rose-600 {
+    background-color: #e11d48 !important;
+    border-color: #e11d48 !important;
+    color: #ffffff !important;
+    opacity: 1 !important;
+}
+
+html:not(.dark) button.bg-rose-600:hover:not(:disabled),
+html:not(.dark) a.bg-rose-600:hover:not(:disabled) {
+    background-color: #f43f5e !important;
+    border-color: #f43f5e !important;
+    color: #ffffff !important;
+}
+
+html:not(.dark) button.bg-rose-600 span,
+html:not(.dark) a.bg-rose-600 span,
+html:not(.dark) button.bg-rose-600 i,
+html:not(.dark) a.bg-rose-600 i,
+html:not(.dark) button.bg-rose-600 svg,
+html:not(.dark) a.bg-rose-600 svg {
+    color: #ffffff !important;
+    stroke: #ffffff !important;
+    opacity: 1 !important;
+}
+
+/* ============================================================== */
+/* GLOBAL PRIMARY BUTTON RULE                                     */
+/* Light (white) theme: dark background + white text              */
+/* Dark theme: primary (emerald) background + white text          */
+/* .btn-primary carries the base colors so buttons keep working   */
+/* even where old per-button classes were removed.                */
+/* ============================================================== */
+.btn-primary,
+button.btn-primary,
+a.btn-primary {
+    background-color: #10b981 !important;
+    border-color: #10b981 !important;
+    color: #ffffff !important;
+}
+
+.btn-primary:hover:not(:disabled),
+button.btn-primary:hover:not(:disabled),
+a.btn-primary:hover:not(:disabled) {
+    background-color: #34d399 !important;
+    border-color: #34d399 !important;
+    color: #ffffff !important;
+}
+
+.btn-primary span,
+button.btn-primary span,
+a.btn-primary span,
+.btn-primary i,
+button.btn-primary i,
+a.btn-primary i,
+.btn-primary svg,
+button.btn-primary svg,
+a.btn-primary svg {
+    color: #ffffff !important;
+    stroke: #ffffff !important;
+}
+html:not(.dark) button.btn-primary,
+html:not(.dark) a.btn-primary,
+html:not(.dark) button[class*="bg-emerald-500"],
+html:not(.dark) a[class*="bg-emerald-500"],
+html:not(.dark) button[class*="from-rose-600"][class*="to-pink-600"],
+html:not(.dark) a[class*="from-rose-600"][class*="to-pink-600"] {
+    background: #0f172a !important;
+    background-color: #0f172a !important;
+    background-image: none !important;
+    border-color: #0f172a !important;
+    color: #ffffff !important;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+    opacity: 1 !important;
+}
+
+html:not(.dark) button.btn-primary:hover:not(:disabled),
+html:not(.dark) a.btn-primary:hover:not(:disabled),
+html:not(.dark) button[class*="bg-emerald-500"]:hover:not(:disabled),
+html:not(.dark) a[class*="bg-emerald-500"]:hover:not(:disabled),
+html:not(.dark) button[class*="from-rose-600"][class*="to-pink-600"]:hover:not(:disabled),
+html:not(.dark) a[class*="from-rose-600"][class*="to-pink-600"]:hover:not(:disabled) {
+    background: #1e293b !important;
+    background-color: #1e293b !important;
+    background-image: none !important;
+    border-color: #1e293b !important;
+    color: #ffffff !important;
+}
+
+html:not(.dark) button.btn-primary span,
+html:not(.dark) a.btn-primary span,
+html:not(.dark) button[class*="bg-emerald-500"] span,
+html:not(.dark) a[class*="bg-emerald-500"] span,
+html:not(.dark) button[class*="from-rose-600"][class*="to-pink-600"] span,
+html:not(.dark) a[class*="from-rose-600"][class*="to-pink-600"] span,
+html:not(.dark) button.btn-primary i,
+html:not(.dark) a.btn-primary i,
+html:not(.dark) button[class*="bg-emerald-500"] i,
+html:not(.dark) a[class*="bg-emerald-500"] i,
+html:not(.dark) button[class*="from-rose-600"][class*="to-pink-600"] i,
+html:not(.dark) a[class*="from-rose-600"][class*="to-pink-600"] i,
+html:not(.dark) button.btn-primary svg,
+html:not(.dark) a.btn-primary svg,
+html:not(.dark) button[class*="bg-emerald-500"] svg,
+html:not(.dark) a[class*="bg-emerald-500"] svg,
+html:not(.dark) button[class*="from-rose-600"][class*="to-pink-600"] svg,
+html:not(.dark) a[class*="from-rose-600"][class*="to-pink-600"] svg {
+    color: #ffffff !important;
+    stroke: #ffffff !important;
+    opacity: 1 !important;
+}
+
+html.dark button.btn-primary,
+html.dark a.btn-primary,
+html.dark button[class*="bg-emerald-500"],
+html.dark a[class*="bg-emerald-500"] {
+    background-color: #10b981 !important;
+    border-color: #10b981 !important;
+    color: #ffffff !important;
+}
+
+html.dark button.btn-primary:hover:not(:disabled),
+html.dark a.btn-primary:hover:not(:disabled),
+html.dark button[class*="bg-emerald-500"]:hover:not(:disabled),
+html.dark a[class*="bg-emerald-500"]:hover:not(:disabled) {
+    background-color: #34d399 !important;
+    border-color: #34d399 !important;
+    color: #ffffff !important;
+}
+
+html.dark button.btn-primary span,
+html.dark a.btn-primary span,
+html.dark button[class*="bg-emerald-500"] span,
+html.dark a[class*="bg-emerald-500"] span,
+html.dark button.btn-primary i,
+html.dark a.btn-primary i,
+html.dark button[class*="bg-emerald-500"] i,
+html.dark a[class*="bg-emerald-500"] i,
+html.dark button.btn-primary svg,
+html.dark a.btn-primary svg,
+html.dark button[class*="bg-emerald-500"] svg,
+html.dark a[class*="bg-emerald-500"] svg {
+    color: #ffffff !important;
+    stroke: #ffffff !important;
+}
+
+/* File input pseudo-button follows the same global rule */
+input.btn-file::file-selector-button {
+    background-color: #10b981 !important;
+    border: 0 !important;
+    color: #ffffff !important;
+}
+
+input.btn-file::file-selector-button:hover {
+    background-color: #34d399 !important;
+    color: #ffffff !important;
+}
+
+input.btn-file::-webkit-file-upload-button {
+    background-color: #10b981 !important;
+    border: 0 !important;
+    color: #ffffff !important;
+}
+
+input.btn-file::-webkit-file-upload-button:hover {
+    background-color: #34d399 !important;
+    color: #ffffff !important;
+}
+
+html:not(.dark) input.btn-file::file-selector-button,
+html:not(.dark) input.btn-file::-webkit-file-upload-button {
+    background-color: #0f172a !important;
+    color: #ffffff !important;
+}
+
+html:not(.dark) input.btn-file::file-selector-button:hover,
+html:not(.dark) input.btn-file::-webkit-file-upload-button:hover {
+    background-color: #1e293b !important;
+    color: #ffffff !important;
+}
