@@ -4,6 +4,7 @@
 
 @section('content')
 <div class="space-y-6" x-data="{
+    createModalOpen: false,
     editModalOpen: false,
     editingKey: {
         id: null,
@@ -25,51 +26,96 @@
         this.editModalOpen = true;
     }
 }">
-    <!-- Generator Box with Granular RPM / TPM Limits -->
-    <div class="bg-[#121215] border border-white/[0.07] rounded-2xl p-6 shadow-lg space-y-4">
-        <div class="border-b border-white/[0.06] pb-3">
-            <h3 class="text-sm font-bold text-white flex items-center gap-2">
-                <i data-lucide="key" class="w-4 h-4 text-emerald-400"></i>
-                <span>Create New API Key</span>
-            </h3>
-            <p class="text-xs text-zinc-400 mt-0.5">Provision secure virtual keys for external IDEs, agents, or microservices with granular rate limit enforcement.</p>
+    <!-- ============================================================== -->
+    <!-- TOP TOOLBAR: HEADER & ACTION BUTTON                            -->
+    <!-- ============================================================== -->
+    <div class="bg-white dark:bg-[#121622]/90 border border-zinc-200 dark:border-white/[0.07] rounded-2xl p-4 sm:p-5 shadow-sm dark:shadow-lg flex items-center justify-between gap-4 flex-wrap">
+        <div>
+            <h2 class="text-base font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+                <span>Client API Keys</span>
+                <span class="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
+                <span class="text-xs font-mono font-medium text-zinc-500 dark:text-zinc-400">({{ $gatewayKeys->count() }})</span>
+            </h2>
+            <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">Provision secure virtual keys for external IDEs, agents, or microservices with granular rate limit enforcement.</p>
         </div>
 
-        <form action="{{ route('dashboard.api-keys.store') }}" method="POST" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 items-end">
-            @csrf
-            <div class="lg:col-span-2">
-                <label class="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">Client Label</label>
-                <input type="text" name="name" placeholder="e.g. Cursor IDE Workstation" required
-                    class="w-full bg-[#09090b] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500">
+        <button type="button" @click="createModalOpen = true; $nextTick(() => { if (window.lucide) lucide.createIcons(); })"
+            class="btn-primary px-4 py-2 text-xs sm:text-sm font-semibold text-white rounded-xl transition-all shadow-md flex items-center gap-2 cursor-pointer">
+            <i data-lucide="plus" class="w-4 h-4"></i>
+            <span>Create API Key</span>
+        </button>
+    </div>
+
+    <!-- Create API Key Modal -->
+    <div x-show="createModalOpen"
+        x-transition:enter="transition ease-out duration-150"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-100"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75" x-cloak>
+        <div x-show="createModalOpen"
+            x-transition:enter="transition ease-out duration-150"
+            x-transition:enter-start="opacity-0 scale-95"
+            x-transition:enter-end="opacity-100 scale-100"
+            x-transition:leave="transition ease-in duration-100"
+            x-transition:leave-start="opacity-100 scale-100"
+            x-transition:leave-end="opacity-0 scale-95"
+            @click.away="createModalOpen = false"
+            class="bg-[#121215] border border-white/10 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden p-6 space-y-5">
+            
+            <div class="flex items-center justify-between border-b border-white/[0.06] pb-3.5">
+                <div class="flex items-center gap-2.5">
+                    <i data-lucide="key" class="w-5 h-5 text-emerald-400"></i>
+                    <h3 class="text-base font-bold text-white">Create New API Key</h3>
+                </div>
+                <button type="button" @click="createModalOpen = false" class="text-zinc-500 hover:text-white text-xl leading-none cursor-pointer">&times;</button>
             </div>
-            <div>
-                <label class="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">Daily Quota</label>
-                <input type="number" name="daily_token_limit" placeholder="Tokens (unlimited)" min="1"
-                    class="w-full bg-[#09090b] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500 font-mono">
-            </div>
-            <div>
-                <label class="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5 flex items-center justify-between">
-                    <span>RPM Limit</span>
-                    <span class="text-[10px] text-blue-400 font-mono">req/min</span>
-                </label>
-                <input type="number" name="rpm_limit" placeholder="e.g. 60 (unlimited)" min="1"
-                    class="w-full bg-[#09090b] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500 font-mono">
-            </div>
-            <div>
-                <label class="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5 flex items-center justify-between">
-                    <span>TPM Limit</span>
-                    <span class="text-[10px] text-purple-400 font-mono">tok/min</span>
-                </label>
-                <input type="number" name="tpm_limit" placeholder="e.g. 100000" min="1"
-                    class="w-full bg-[#09090b] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500 font-mono">
-            </div>
-            <div class="sm:col-span-2 lg:col-span-5 flex justify-end pt-1">
-                <button type="submit" class="btn-primary w-full sm:w-auto px-5 py-2.5 text-white font-semibold text-sm rounded-xl shadow-md transition-colors whitespace-nowrap flex items-center justify-center gap-2 cursor-pointer">
-                    <i data-lucide="plus" class="w-4 h-4"></i>
-                    <span>Create API Key</span>
-                </button>
-            </div>
-        </form>
+
+            <form action="{{ route('dashboard.api-keys.store') }}" method="POST" class="space-y-4">
+                @csrf
+
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">Client Label</label>
+                    <input type="text" name="name" placeholder="e.g. Cursor IDE Workstation, Production Agent" required
+                        class="w-full bg-[#09090b] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">Daily Token Quota</label>
+                    <input type="number" name="daily_token_limit" placeholder="Optional (unlimited tokens/day)" min="1"
+                        class="w-full bg-[#09090b] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500 font-mono">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3.5">
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5 flex items-center justify-between">
+                            <span>RPM Limit</span>
+                            <span class="text-[10px] text-blue-400 font-mono">req/min</span>
+                        </label>
+                        <input type="number" name="rpm_limit" placeholder="e.g. 60 (unlimited)" min="1"
+                            class="w-full bg-[#09090b] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500 font-mono">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5 flex items-center justify-between">
+                            <span>TPM Limit</span>
+                            <span class="text-[10px] text-purple-400 font-mono">tok/min</span>
+                        </label>
+                        <input type="number" name="tpm_limit" placeholder="e.g. 100000" min="1"
+                            class="w-full bg-[#09090b] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500 font-mono">
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-white/[0.06] flex items-center justify-end gap-2.5">
+                    <button type="button" @click="createModalOpen = false" class="px-4 py-2.5 text-sm font-semibold bg-rose-600 hover:bg-rose-500 text-white rounded-xl transition-all shadow-md cursor-pointer">Cancel</button>
+                    <button type="submit" class="btn-primary px-5 py-2.5 text-white font-semibold text-sm rounded-xl transition-all shadow-md flex items-center gap-2 cursor-pointer">
+                        <i data-lucide="plus" class="w-4 h-4"></i>
+                        <span>Create API Key</span>
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <!-- Keys Table -->
@@ -184,7 +230,12 @@
                     <i data-lucide="key-round" class="w-7 h-7"></i>
                 </div>
                 <div class="text-base text-zinc-300 font-semibold">No API keys created yet</div>
-                <p class="text-xs text-zinc-500 mt-1 max-w-sm mx-auto">Create your first API key above to start routing requests.</p>
+                <p class="text-xs text-zinc-500 mt-1 max-w-sm mx-auto">Create your first API key to start routing requests.</p>
+                <button type="button" @click="createModalOpen = true; $nextTick(() => { if (window.lucide) lucide.createIcons(); })"
+                    class="btn-primary mt-4 px-4 py-2 text-xs sm:text-sm font-semibold text-white rounded-xl transition-all shadow-md inline-flex items-center gap-2 cursor-pointer">
+                    <i data-lucide="plus" class="w-4 h-4"></i>
+                    <span>Create First API Key</span>
+                </button>
             </div>
         @endif
     </div>

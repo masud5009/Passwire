@@ -1,6 +1,6 @@
 @extends('layouts.dashboard')
 
-@section('title', 'Live Request Telemetry & Logs')
+@section('title', 'Request Logs')
 
 @section('content')
 <div class="space-y-6">
@@ -24,7 +24,7 @@
                                 <form action="{{ route('dashboard.logs.clear') }}" method="POST" class="inline">
                                     @csrf
                                     <button type="button"
-                                        @click="confirmDelete($el.closest('form'), 'Clear Telemetry Logs', 'Clear all request telemetry trace logs? This cannot be undone.', 'Yes, Clear All Logs')"
+                                        @click="confirmDelete($el.closest('form'), 'Clear Request Logs', 'Permanently clear all request logs? This cannot be undone.', 'Yes, Clear All Logs')"
                                         class="p-2 text-zinc-500 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-colors cursor-pointer" title="Clear All Logs">
                                         <i data-lucide="trash-2" class="w-4 h-4 pointer-events-none"></i>
                                     </button>
@@ -125,7 +125,7 @@
                     <i data-lucide="activity" class="w-7 h-7"></i>
                 </div>
                 <div class="text-base text-zinc-300 font-semibold">No gateway requests logged yet</div>
-                <p class="text-xs text-zinc-500 mt-1 max-w-sm mx-auto">Use the <a href="{{ route('dashboard.playground') }}" class="text-emerald-400 underline underline-offset-2">Live Playground</a> or send prompts from Cursor/client to start generating telemetry traces.</p>
+                <p class="text-xs text-zinc-500 mt-1 max-w-sm mx-auto">Use the <a href="{{ route('dashboard.playground') }}" class="text-emerald-400 underline underline-offset-2">Live Playground</a> or send prompts from Cursor/client to start generating request logs.</p>
             </div>
         @endif
     </div>

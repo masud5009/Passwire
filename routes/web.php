@@ -32,6 +32,8 @@ Route::middleware('auth')->prefix('dashboard')->name('dashboard.')->group(functi
     Route::put('/alerts', [AdminDashboardController::class, 'updateAlertSettings'])->name('alerts.update');
     Route::post('/alerts/test', [AdminDashboardController::class, 'testAlertWebhook'])->name('alerts.test');
     Route::get('/analytics/charts', [AdminDashboardController::class, 'chartAnalytics'])->name('analytics.charts');
+    Route::get('/profile', [AdminAuthController::class, 'editProfile'])->name('profile');
+    Route::put('/profile', [AdminAuthController::class, 'updateProfile'])->name('profile.update');
 
     // Providers & Accounts
     Route::post('/providers', [AdminDashboardController::class, 'storeProvider'])->name('providers.store');

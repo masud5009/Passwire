@@ -125,12 +125,12 @@
                     <a href="{{ route('dashboard.overview') }}"
                         @class([
                             'w-full py-2 px-3 rounded-xl text-xs sm:text-sm flex items-center justify-between transition-all group',
-                            'bg-white/[0.08] text-white font-semibold border-l-2 border-emerald-400 pl-2.5' => request()->routeIs('dashboard.index') || request()->routeIs('dashboard.overview') || request()->routeIs('dashboard'),
+                            'bg-white/[0.08] text-white font-semibold' => request()->routeIs('dashboard.index') || request()->routeIs('dashboard.overview') || request()->routeIs('dashboard'),
                             'text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.03]' => !(request()->routeIs('dashboard.index') || request()->routeIs('dashboard.overview') || request()->routeIs('dashboard')),
                         ])>
                         <div class="flex items-center gap-2.5">
                             <i data-lucide="layout-dashboard" class="w-4 h-4 transition-colors {{ (request()->routeIs('dashboard.index') || request()->routeIs('dashboard.overview') || request()->routeIs('dashboard')) ? 'text-emerald-400' : 'text-zinc-500 group-hover:text-zinc-300' }}"></i>
-                            <span>Overview & Analytics</span>
+                            <span>Overview</span>
                         </div>
                     </a>
 
@@ -138,14 +138,14 @@
                     <a href="{{ route('dashboard.providers') }}"
                         @class([
                             'w-full py-2 px-3 rounded-xl text-xs sm:text-sm flex items-center justify-between transition-all group',
-                            'bg-white/[0.08] text-white font-semibold border-l-2 border-emerald-400 pl-2.5' => request()->routeIs('dashboard.providers'),
-                            'text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.03]' => !request()->routeIs('dashboard.providers'),
+                            'bg-white/[0.08] text-white font-semibold' => request()->routeIs('dashboard.providers', 'dashboard.providers.*'),
+                            'text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.03]' => !request()->routeIs('dashboard.providers', 'dashboard.providers.*'),
                         ])>
                         <div class="flex items-center gap-2.5">
-                            <i data-lucide="cpu" class="w-4 h-4 transition-colors {{ request()->routeIs('dashboard.providers') ? 'text-emerald-400' : 'text-zinc-500 group-hover:text-zinc-300' }}"></i>
+                            <i data-lucide="cpu" class="w-4 h-4 transition-colors {{ request()->routeIs('dashboard.providers', 'dashboard.providers.*') ? 'text-emerald-400' : 'text-zinc-500 group-hover:text-zinc-300' }}"></i>
                             <span>AI Providers</span>
                         </div>
-                        <span class="text-[11px] px-1.5 py-0.5 rounded font-mono {{ request()->routeIs('dashboard.providers') ? 'bg-emerald-500/20 text-emerald-300 font-semibold' : 'bg-zinc-800 text-zinc-400' }}">
+                        <span class="text-[11px] px-1.5 py-0.5 rounded font-mono {{ request()->routeIs('dashboard.providers', 'dashboard.providers.*') ? 'bg-emerald-500/20 text-emerald-300 font-semibold' : 'bg-zinc-800 text-zinc-400' }}">
                             {{ $sidebarProvidersCount }}
                         </span>
                     </a>
@@ -154,11 +154,11 @@
                     <a href="{{ route('dashboard.combos') }}"
                         @class([
                             'w-full py-2 px-3 rounded-xl text-xs sm:text-sm flex items-center justify-between transition-all group',
-                            'bg-white/[0.08] text-white font-semibold border-l-2 border-emerald-400 pl-2.5' => request()->routeIs('dashboard.combos'),
-                            'text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.03]' => !request()->routeIs('dashboard.combos'),
+                            'bg-white/[0.08] text-white font-semibold' => request()->routeIs('dashboard.combos', 'dashboard.combos.*'),
+                            'text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.03]' => !request()->routeIs('dashboard.combos', 'dashboard.combos.*'),
                         ])>
                         <div class="flex items-center gap-2.5">
-                            <i data-lucide="git-branch" class="w-4 h-4 transition-colors {{ request()->routeIs('dashboard.combos') ? 'text-emerald-400' : 'text-zinc-500 group-hover:text-zinc-300' }}"></i>
+                            <i data-lucide="git-branch" class="w-4 h-4 transition-colors {{ request()->routeIs('dashboard.combos', 'dashboard.combos.*') ? 'text-emerald-400' : 'text-zinc-500 group-hover:text-zinc-300' }}"></i>
                             <span>Smart Combos</span>
                         </div>
                         <span class="text-[11px] px-1.5 py-0.5 rounded font-mono bg-zinc-800 text-zinc-400">{{ $sidebarCombosCount }}</span>
@@ -168,11 +168,11 @@
                     <a href="{{ route('dashboard.api-keys') }}"
                         @class([
                             'w-full py-2 px-3 rounded-xl text-xs sm:text-sm flex items-center justify-between transition-all group',
-                            'bg-white/[0.08] text-white font-semibold border-l-2 border-emerald-400 pl-2.5' => request()->routeIs('dashboard.api-keys', 'dashboard.gateway-keys'),
-                            'text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.03]' => !request()->routeIs('dashboard.api-keys', 'dashboard.gateway-keys'),
+                            'bg-white/[0.08] text-white font-semibold' => request()->routeIs('dashboard.api-keys', 'dashboard.gateway-keys', 'dashboard.api-keys.*', 'dashboard.gateway-keys.*'),
+                            'text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.03]' => !request()->routeIs('dashboard.api-keys', 'dashboard.gateway-keys', 'dashboard.api-keys.*', 'dashboard.gateway-keys.*'),
                         ])>
                         <div class="flex items-center gap-2.5">
-                            <i data-lucide="key-round" class="w-4 h-4 transition-colors {{ request()->routeIs('dashboard.gateway-keys', 'dashboard.api-keys') ? 'text-emerald-400' : 'text-zinc-500 group-hover:text-zinc-300' }}"></i>
+                            <i data-lucide="key-round" class="w-4 h-4 transition-colors {{ request()->routeIs('dashboard.api-keys', 'dashboard.gateway-keys', 'dashboard.api-keys.*', 'dashboard.gateway-keys.*') ? 'text-emerald-400' : 'text-zinc-500 group-hover:text-zinc-300' }}"></i>
                             <span>API Keys</span>
                         </div>
                         <span class="text-[11px] px-1.5 py-0.5 rounded font-mono bg-zinc-800 text-zinc-400">{{ $sidebarKeysCount }}</span>
@@ -184,26 +184,26 @@
                     <a href="{{ route('dashboard.playground') }}"
                         @class([
                             'w-full py-2 px-3 rounded-xl text-xs sm:text-sm flex items-center justify-between transition-all group',
-                            'bg-white/[0.08] text-white font-semibold border-l-2 border-emerald-400 pl-2.5' => request()->routeIs('dashboard.playground'),
-                            'text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.03]' => !request()->routeIs('dashboard.playground'),
+                            'bg-white/[0.08] text-white font-semibold' => request()->routeIs('dashboard.playground', 'dashboard.playground.*'),
+                            'text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.03]' => !request()->routeIs('dashboard.playground', 'dashboard.playground.*'),
                         ])>
                         <div class="flex items-center gap-2.5">
-                            <i data-lucide="terminal" class="w-4 h-4 transition-colors {{ request()->routeIs('dashboard.playground') ? 'text-emerald-400' : 'text-zinc-500 group-hover:text-zinc-300' }}"></i>
+                            <i data-lucide="terminal" class="w-4 h-4 transition-colors {{ request()->routeIs('dashboard.playground', 'dashboard.playground.*') ? 'text-emerald-400' : 'text-zinc-500 group-hover:text-zinc-300' }}"></i>
                             <span>Live Playground</span>
                         </div>
                         <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                     </a>
 
-                    <!-- 6. Telemetry Logs -->
+                    <!-- 6. Request Logs -->
                     <a href="{{ route('dashboard.logs') }}"
                         @class([
                             'w-full py-2 px-3 rounded-xl text-xs sm:text-sm flex items-center justify-between transition-all group',
-                            'bg-white/[0.08] text-white font-semibold border-l-2 border-emerald-400 pl-2.5' => request()->routeIs('dashboard.logs'),
-                            'text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.03]' => !request()->routeIs('dashboard.logs'),
+                            'bg-white/[0.08] text-white font-semibold' => request()->routeIs('dashboard.logs', 'dashboard.logs.*'),
+                            'text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.03]' => !request()->routeIs('dashboard.logs', 'dashboard.logs.*'),
                         ])>
                         <div class="flex items-center gap-2.5">
-                            <i data-lucide="activity" class="w-4 h-4 transition-colors {{ request()->routeIs('dashboard.logs') ? 'text-emerald-400' : 'text-zinc-500 group-hover:text-zinc-300' }}"></i>
-                            <span>Telemetry Logs</span>
+                            <i data-lucide="activity" class="w-4 h-4 transition-colors {{ request()->routeIs('dashboard.logs', 'dashboard.logs.*') ? 'text-emerald-400' : 'text-zinc-500 group-hover:text-zinc-300' }}"></i>
+                            <span>Request Logs</span>
                         </div>
                         <span class="text-[11px] px-1.5 py-0.5 rounded font-mono bg-zinc-800 text-zinc-400">{{ $sidebarLogsCount }}</span>
                     </a>
@@ -212,12 +212,28 @@
                     <a href="{{ route('dashboard.alerts') }}"
                         @class([
                             'w-full py-2 px-3 rounded-xl text-xs sm:text-sm flex items-center justify-between transition-all group',
-                            'bg-white/[0.08] text-white font-semibold border-l-2 border-emerald-400 pl-2.5' => request()->routeIs('dashboard.alerts'),
-                            'text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.03]' => !request()->routeIs('dashboard.alerts'),
+                            'bg-white/[0.08] text-white font-semibold' => request()->routeIs('dashboard.alerts', 'dashboard.alerts.*'),
+                            'text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.03]' => !request()->routeIs('dashboard.alerts', 'dashboard.alerts.*'),
                         ])>
                         <div class="flex items-center gap-2.5">
-                            <i data-lucide="bell-ring" class="w-4 h-4 transition-colors {{ request()->routeIs('dashboard.alerts') ? 'text-emerald-400' : 'text-zinc-500 group-hover:text-zinc-300' }}"></i>
+                            <i data-lucide="bell-ring" class="w-4 h-4 transition-colors {{ request()->routeIs('dashboard.alerts', 'dashboard.alerts.*') ? 'text-emerald-400' : 'text-zinc-500 group-hover:text-zinc-300' }}"></i>
                             <span>Alerts & Webhooks</span>
+                        </div>
+                    </a>
+
+                    <!-- Account Navigation Section -->
+                    <div class="text-[11px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 px-3 pt-3 pb-1">Account</div>
+
+                    <!-- 8. Edit Profile -->
+                    <a href="{{ route('dashboard.profile') }}"
+                        @class([
+                            'w-full py-2 px-3 rounded-xl text-xs sm:text-sm flex items-center justify-between transition-all group',
+                            'bg-white/[0.08] text-white font-semibold' => request()->routeIs('dashboard.profile', 'dashboard.profile.*'),
+                            'text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.03]' => !request()->routeIs('dashboard.profile', 'dashboard.profile.*'),
+                        ])>
+                        <div class="flex items-center gap-2.5">
+                            <i data-lucide="user-pen" class="w-4 h-4 transition-colors {{ request()->routeIs('dashboard.profile', 'dashboard.profile.*') ? 'text-emerald-400' : 'text-zinc-500 group-hover:text-zinc-300' }}"></i>
+                            <span>Edit Profile</span>
                         </div>
                     </a>
                 </nav>
@@ -239,7 +255,7 @@
 
                     <form action="{{ route('logout') }}" method="POST">
                         @csrf
-                        <button type="submit" class="p-2 text-zinc-400 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-colors" title="Sign Out">
+                        <button type="submit" class="p-2 text-zinc-400 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-colors cursor-pointer" title="Sign Out">
                             <i data-lucide="log-out" class="w-4.5 h-4.5"></i>
                         </button>
                     </form>
@@ -255,7 +271,7 @@
             <header class="h-16 border-b border-white/[0.07] bg-[#09090b]/80 backdrop-blur-md px-6 flex items-center justify-between z-20 flex-shrink-0">
                 <!-- Page Title -->
                 <div class="flex items-center gap-3">
-                    <h1 class="text-lg sm:text-xl font-bold text-white tracking-tight">@yield('title', 'Overview & Live Analytics')</h1>
+                    <h1 class="text-lg sm:text-xl font-bold text-white tracking-tight">@yield('title', 'Overview')</h1>
                 </div>
 
                 <!-- Right Header Actions -->

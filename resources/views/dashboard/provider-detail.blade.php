@@ -152,12 +152,12 @@ window.providerDetailManager = function() {
                         'format' => $provider->format,
                         'description' => $provider->description ?? '',
                     ]) }})"
-                    class="px-4 py-2.5 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 dark:bg-white/5 dark:hover:bg-white/10 dark:text-zinc-200 border border-zinc-200/80 dark:border-white/10 font-semibold text-xs sm:text-sm rounded-xl transition-all flex items-center gap-2 shadow-sm cursor-pointer">
+                    class="px-4 py-2 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 dark:bg-white/5 dark:hover:bg-white/10 dark:text-zinc-200 border border-zinc-200/80 dark:border-white/10 font-semibold text-xs sm:text-sm rounded-xl transition-all flex items-center gap-2 shadow-sm cursor-pointer">
                     <i data-lucide="pencil" class="w-4 h-4 text-emerald-500"></i>
                     <span>Edit Provider</span>
                 </button>
                 <button type="button" @click="openAddKeyModal({{ $provider->id }})"
-                    class="px-4.5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold text-xs sm:text-sm rounded-xl transition-all shadow-md flex items-center gap-2 cursor-pointer">
+                    class="btn-primary px-4 py-2 text-xs sm:text-sm font-semibold text-white rounded-xl transition-all shadow-md flex items-center gap-2 cursor-pointer">
                     <i data-lucide="plus" class="w-4 h-4"></i>
                     <span>Add Connection</span>
                 </button>
@@ -234,7 +234,7 @@ window.providerDetailManager = function() {
 
                     <div class="flex items-center gap-2">
                         <button type="button" @click="openAddKeyModal({{ $provider->id }})"
-                            class="px-3.5 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold text-xs rounded-xl transition-all flex items-center gap-1.5 shadow-sm cursor-pointer">
+                            class="btn-primary px-3.5 py-1.5 text-xs font-semibold text-white rounded-xl transition-all flex items-center gap-1.5 shadow-sm cursor-pointer">
                             <i data-lucide="plus" class="w-3.5 h-3.5"></i>
                             <span>Add Connection</span>
                         </button>
@@ -253,7 +253,7 @@ window.providerDetailManager = function() {
                                 <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">Add your upstream API key to start routing traffic.</p>
                             </div>
                             <button type="button" @click="openAddKeyModal({{ $provider->id }})"
-                                class="mt-1 px-3.5 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold text-xs rounded-xl transition-all flex items-center gap-1.5 shadow-sm cursor-pointer">
+                                class="btn-primary mt-1 px-3.5 py-1.5 text-xs font-semibold text-white rounded-xl transition-all flex items-center gap-1.5 shadow-sm cursor-pointer">
                                 <i data-lucide="plus" class="w-3.5 h-3.5"></i>
                                 <span>Add First Connection</span>
                             </button>

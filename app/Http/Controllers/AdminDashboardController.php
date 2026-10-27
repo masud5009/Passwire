@@ -27,7 +27,7 @@ class AdminDashboardController extends Controller
     ) {}
 
     /**
-     * Display the Overview & Analytics page.
+     * Display the Overview page.
      */
     public function overview(): View
     {
@@ -121,7 +121,7 @@ class AdminDashboardController extends Controller
     }
 
     /**
-     * Display Request Telemetry & Error Logs page.
+     * Display Request Logs page.
      */
     public function logs(): View
     {

@@ -83,7 +83,7 @@ class DashboardUiTest extends TestCase
         // 6. Logs Route
         $resLogs = $this->actingAs($admin)->get('/dashboard/logs');
         $resLogs->assertStatus(200);
-        $resLogs->assertSee('Live Request Telemetry', false);
+        $resLogs->assertSee('Request Logs', false);
 
         // 7. Alerts Route
         $resAlerts = $this->actingAs($admin)->get('/dashboard/alerts');

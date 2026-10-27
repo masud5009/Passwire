@@ -259,7 +259,7 @@
                                     </button>
                                 @else
                                     <button type="button" @click.stop="openAddKeyModal({{ $provider->id }})"
-                                        class="px-3.5 py-1.5 text-xs font-semibold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 rounded-xl shadow-sm transition-all flex items-center gap-1.5 cursor-pointer">
+                                        class="btn-primary px-3.5 py-1.5 text-xs font-semibold text-white rounded-xl shadow-sm transition-all flex items-center gap-1.5 cursor-pointer">
                                         <i data-lucide="plus" class="w-3 h-3"></i>
                                         <span>Connect</span>
                                     </button>
