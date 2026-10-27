@@ -131,16 +131,6 @@ class AdminDashboardController extends Controller
     }
 
     /**
-     * Display Website / Branding Settings page (only Site Settings).
-     */
-    public function settings(): View
-    {
-        $siteSettings = \App\Models\SiteSetting::getSettings();
-
-        return view('dashboard.settings', compact('siteSettings'));
-    }
-
-    /**
      * Display Alerts & Webhooks page (only Alert Settings).
      */
     public function alerts(): View
@@ -148,84 +138,6 @@ class AdminDashboardController extends Controller
         $alertSettings = \App\Models\AlertSetting::getSettings();
 
         return view('dashboard.alerts', compact('alertSettings'));
-    }
-
-    /**
-     * Update General Website / Branding Settings.
-     */
-    public function updateSiteSettings(Request $request): RedirectResponse
-    {
-        $validated = $request->validate([
-            'site_title' => 'required|string|max:100',
-            'version' => 'required|string|max:20',
-            'logo' => 'nullable|image|mimes:png,jpg,jpeg,svg,webp',
-            'logo_dark' => 'nullable|image|mimes:png,jpg,jpeg,svg,webp',
-            'logo_light' => 'nullable|image|mimes:png,jpg,jpeg,svg,webp',
-            'favicon' => 'nullable|mimes:png,jpg,jpeg,svg,webp,ico',
-            'remove_logo' => 'nullable|boolean',
-            'remove_logo_dark' => 'nullable|boolean',
-            'remove_logo_light' => 'nullable|boolean',
-            'remove_favicon' => 'nullable|boolean',
-        ]);
-
-        $settings = \App\Models\SiteSetting::getSettings();
-
-        $data = [
-            'site_title' => $validated['site_title'],
-            'version' => $validated['version'],
-        ];
-
-        if ($request->boolean('remove_logo') && $settings->logo_path) {
-            \Illuminate\Support\Facades\Storage::disk('public')->delete($settings->logo_path);
-            $data['logo_path'] = null;
-        }
-
-        if ($request->boolean('remove_logo_dark') && $settings->logo_dark_path) {
-            \Illuminate\Support\Facades\Storage::disk('public')->delete($settings->logo_dark_path);
-            $data['logo_dark_path'] = null;
-        }
-
-        if ($request->boolean('remove_logo_light') && $settings->logo_light_path) {
-            \Illuminate\Support\Facades\Storage::disk('public')->delete($settings->logo_light_path);
-            $data['logo_light_path'] = null;
-        }
-
-        if ($request->boolean('remove_favicon') && $settings->favicon_path) {
-            \Illuminate\Support\Facades\Storage::disk('public')->delete($settings->favicon_path);
-            $data['favicon_path'] = null;
-        }
-
-        if ($request->hasFile('logo')) {
-            if ($settings->logo_path) {
-                \Illuminate\Support\Facades\Storage::disk('public')->delete($settings->logo_path);
-            }
-            $data['logo_path'] = $request->file('logo')->store('branding', 'public');
-        }
-
-        if ($request->hasFile('logo_dark')) {
-            if ($settings->logo_dark_path) {
-                \Illuminate\Support\Facades\Storage::disk('public')->delete($settings->logo_dark_path);
-            }
-            $data['logo_dark_path'] = $request->file('logo_dark')->store('branding', 'public');
-        }
-
-        if ($request->hasFile('logo_light')) {
-            if ($settings->logo_light_path) {
-                \Illuminate\Support\Facades\Storage::disk('public')->delete($settings->logo_light_path);
-            }
-            $data['logo_light_path'] = $request->file('logo_light')->store('branding', 'public');
-        }
-
-        if ($request->hasFile('favicon')) {
-            if ($settings->favicon_path) {
-                \Illuminate\Support\Facades\Storage::disk('public')->delete($settings->favicon_path);
-            }
-            $data['favicon_path'] = $request->file('favicon')->store('branding', 'public');
-        }
-
-        $settings->update($data);
-
-        return back()->with('success', 'Website settings updated successfully.');
     }
 
     /**

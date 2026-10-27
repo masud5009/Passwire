@@ -135,7 +135,7 @@ class AlertNotificationTest extends TestCase
         ]);
 
         // 1. Update settings
-        $response = $this->actingAs($admin)->from('/dashboard/settings')->put('/dashboard/settings/alerts', [
+        $response = $this->actingAs($admin)->from('/dashboard/alerts')->put('/dashboard/alerts', [
             'is_enabled' => '1',
             'webhook_type' => 'discord',
             'webhook_url' => 'https://discord.com/api/webhooks/999/token123',
@@ -144,7 +144,7 @@ class AlertNotificationTest extends TestCase
             'alert_key_limit_exceeded' => '1',
         ]);
 
-        $response->assertRedirect('/dashboard/settings');
+        $response->assertRedirect('/dashboard/alerts');
 
         $settings = AlertSetting::getSettings();
         $this->assertTrue($settings->is_enabled);
@@ -152,7 +152,7 @@ class AlertNotificationTest extends TestCase
         $this->assertEquals('https://discord.com/api/webhooks/999/token123', $settings->webhook_url);
 
         // 2. Test alert via endpoint
-        $testResponse = $this->actingAs($admin)->postJson('/dashboard/settings/alerts/test');
+        $testResponse = $this->actingAs($admin)->postJson('/dashboard/alerts/test');
         $testResponse->assertStatus(200);
         $testResponse->assertJsonPath('success', true);
     }

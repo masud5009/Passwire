@@ -27,14 +27,9 @@ Route::middleware('auth')->prefix('dashboard')->name('dashboard.')->group(functi
     Route::get('/gateway-keys', [AdminDashboardController::class, 'gatewayKeys'])->name('gateway-keys');
     Route::get('/playground', [AdminDashboardController::class, 'playground'])->name('playground');
     Route::get('/logs', [AdminDashboardController::class, 'logs'])->name('logs');
-    Route::get('/settings', [AdminDashboardController::class, 'settings'])->name('settings');
-    Route::put('/settings/site', [AdminDashboardController::class, 'updateSiteSettings'])->name('settings.site.update');
     Route::get('/alerts', [AdminDashboardController::class, 'alerts'])->name('alerts');
     Route::put('/alerts', [AdminDashboardController::class, 'updateAlertSettings'])->name('alerts.update');
     Route::post('/alerts/test', [AdminDashboardController::class, 'testAlertWebhook'])->name('alerts.test');
-    // Backward-compatible aliases (old dashboard.settings.alerts.* names)
-    Route::put('/settings/alerts', [AdminDashboardController::class, 'updateAlertSettings'])->name('settings.alerts.update');
-    Route::post('/settings/alerts/test', [AdminDashboardController::class, 'testAlertWebhook'])->name('settings.alerts.test');
     Route::get('/analytics/charts', [AdminDashboardController::class, 'chartAnalytics'])->name('analytics.charts');
 
     // Providers & Accounts

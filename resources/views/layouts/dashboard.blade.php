@@ -217,25 +217,12 @@
                     <a href="{{ route('dashboard.alerts') }}"
                         @class([
                             'w-full py-2 px-3 rounded-xl text-xs sm:text-sm flex items-center justify-between transition-all group',
-                            'bg-white/[0.08] text-white font-semibold border-l-2 border-emerald-400 pl-2.5' => request()->routeIs('dashboard.alerts', 'dashboard.settings.alerts.*'),
-                            'text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.03]' => !request()->routeIs('dashboard.alerts', 'dashboard.settings.alerts.*'),
+                            'bg-white/[0.08] text-white font-semibold border-l-2 border-emerald-400 pl-2.5' => request()->routeIs('dashboard.alerts'),
+                            'text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.03]' => !request()->routeIs('dashboard.alerts'),
                         ])>
                         <div class="flex items-center gap-2.5">
-                            <i data-lucide="bell-ring" class="w-4 h-4 transition-colors {{ request()->routeIs('dashboard.alerts', 'dashboard.settings.alerts.*') ? 'text-emerald-400' : 'text-zinc-500 group-hover:text-zinc-300' }}"></i>
+                            <i data-lucide="bell-ring" class="w-4 h-4 transition-colors {{ request()->routeIs('dashboard.alerts') ? 'text-emerald-400' : 'text-zinc-500 group-hover:text-zinc-300' }}"></i>
                             <span>Alerts & Webhooks</span>
-                        </div>
-                    </a>
-
-                    <!-- 8. Settings -->
-                    <a href="{{ route('dashboard.settings') }}"
-                        @class([
-                            'w-full py-2 px-3 rounded-xl text-xs sm:text-sm flex items-center justify-between transition-all group',
-                            'bg-white/[0.08] text-white font-semibold border-l-2 border-emerald-400 pl-2.5' => request()->routeIs('dashboard.settings', 'dashboard.settings.site.*'),
-                            'text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.03]' => !request()->routeIs('dashboard.settings', 'dashboard.settings.site.*'),
-                        ])>
-                        <div class="flex items-center gap-2.5">
-                            <i data-lucide="settings" class="w-4 h-4 transition-colors {{ request()->routeIs('dashboard.settings', 'dashboard.settings.site.*') ? 'text-emerald-400' : 'text-zinc-500 group-hover:text-zinc-300' }}"></i>
-                            <span>Settings</span>
                         </div>
                     </a>
                 </nav>

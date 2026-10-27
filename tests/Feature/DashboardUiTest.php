@@ -82,10 +82,9 @@ class DashboardUiTest extends TestCase
         $resLogs->assertStatus(200);
         $resLogs->assertSee('Live Request Telemetry', false);
 
-        // 7. Settings Route
-        $resSettings = $this->actingAs($admin)->get('/dashboard/settings');
-        $resSettings->assertStatus(200);
-        $resSettings->assertSee('Website Settings', false);
-        $resSettings->assertSee('Save Website Settings', false);
+        // 7. Alerts Route
+        $resAlerts = $this->actingAs($admin)->get('/dashboard/alerts');
+        $resAlerts->assertStatus(200);
+        $resAlerts->assertSee('Real-Time Failover Alerts & Webhooks', false);
     }
 }
