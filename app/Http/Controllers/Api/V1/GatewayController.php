@@ -127,6 +127,17 @@ class GatewayController extends Controller
             $result = $this->router->dispatchSync($payload, $gatewayKey);
 
             return response()->json($result['response'], 200, [
+                // Passwire Gateway Standard Headers
+                'X-Passwire-Cache' => !empty($result['meta']['cached']) ? 'HIT' : 'MISS',
+                'X-Passwire-Provider' => $result['meta']['provider'] ?? '',
+                'X-Passwire-Model' => $result['meta']['model'] ?? '',
+                'X-Passwire-Account' => $result['meta']['account'] ?? '',
+                'X-Passwire-Saved-Tokens' => (string) ($result['meta']['saved_tokens'] ?? 0),
+                'X-Passwire-Cost-USD' => (string) ($result['meta']['cost_usd'] ?? 0),
+                'X-Passwire-Cost-Saved-USD' => (string) ($result['meta']['cost_saved_usd'] ?? 0),
+                'X-Passwire-Redacted-PII' => (string) ($result['meta']['redacted_pii_count'] ?? 0),
+                'X-Passwire-Latency-Ms' => (string) ($result['meta']['latency_ms'] ?? 0),
+                // Legacy compatibility headers
                 'X-OmniRoute-Cache' => !empty($result['meta']['cached']) ? 'HIT' : 'MISS',
                 'X-OmniRoute-Provider' => $result['meta']['provider'] ?? '',
                 'X-OmniRoute-Model' => $result['meta']['model'] ?? '',
@@ -518,7 +529,7 @@ class GatewayController extends Controller
                 $summary = implode(' | ', $attemptErrors);
                 $errPayload = [
                     'error' => [
-                        'message' => 'OmniRoute streaming fallback exhausted: ' . ($summary ?: 'No healthy accounts available.'),
+                        'message' => 'Passwire streaming fallback exhausted: ' . ($summary ?: 'No healthy accounts available.'),
                         'type' => 'gateway_error',
                         'code' => 'stream_fallback_failed',
                     ],

@@ -20,9 +20,9 @@ class DatabaseSeeder extends Seeder
     {
         // 1. Default Admin User
         User::updateOrCreate(
-            ['email' => 'admin@omniroute.local'],
+            ['email' => 'admin@passwire.local'],
             [
-                'name' => 'OmniRoute Admin',
+                'name' => 'Passwire Admin',
                 'password' => 'password',
                 'email_verified_at' => now(),
             ]
@@ -98,7 +98,7 @@ class DatabaseSeeder extends Seeder
 
         // 4. Default Gateway Key
         GatewayKey::updateOrCreate(
-            ['key' => 'sk-omni-master-key-1234567890abcdef'],
+            ['key' => 'sk-pw-master-key-1234567890abcdef'],
             [
                 'name' => 'Default Master Key',
                 'is_active' => true,

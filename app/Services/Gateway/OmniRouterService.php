@@ -455,6 +455,6 @@ class OmniRouterService
             'error_message' => $summary ?: 'All providers and accounts failed.',
         ]);
 
-        throw new RuntimeException("OmniRoute upstream fallback exhausted for '{$requestedModel}': " . ($summary ?: 'No healthy accounts available.'));
+        throw new RuntimeException("Passwire upstream fallback exhausted for '{$requestedModel}': " . ($summary ?: 'No healthy accounts available.'));
     }
 }

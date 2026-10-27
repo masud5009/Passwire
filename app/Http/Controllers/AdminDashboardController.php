@@ -905,7 +905,7 @@ class AdminDashboardController extends Controller
             'tpm_limit' => 'nullable|integer|min:1',
         ]);
 
-        $key = 'sk-omni-' . bin2hex(random_bytes(16));
+        $key = 'sk-pw-' . bin2hex(random_bytes(16));
 
         GatewayKey::create([
             'name' => $validated['name'],

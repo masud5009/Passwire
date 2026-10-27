@@ -73,7 +73,7 @@ class AlertNotificationService
 
             return $success;
         } catch (\Throwable $e) {
-            Log::warning("OmniRoute Webhook Alert failed: " . $e->getMessage(), [
+            Log::warning("Passwire Webhook Alert failed: " . $e->getMessage(), [
                 'type' => $settings->webhook_type,
                 'title' => $title,
             ]);
@@ -108,7 +108,7 @@ class AlertNotificationService
         }
 
         $payload = [
-            'username' => 'OmniRoute AI Gateway',
+            'username' => 'Passwire AI Gateway',
             'embeds' => [
                 [
                     'title' => $title,
@@ -178,7 +178,7 @@ class AlertNotificationService
         }
 
         $lines = [
-            "*OmniRoute Alert*",
+            "*Passwire Alert*",
             "*" . str_replace('*', '', $title) . "*",
             str_replace('_', '\_', $message),
         ];
@@ -287,8 +287,8 @@ class AlertNotificationService
         $type = strtoupper($settings->webhook_type);
 
         $sent = $this->sendAlert(
-            "🧪 OmniRoute Webhook Test Notification",
-            "This is a test notification from your OmniRoute AI Gateway console. Your {$type} webhook alert channel is functioning properly!",
+            "🧪 Passwire Webhook Test Notification",
+            "This is a test notification from your Passwire AI Gateway console. Your {$type} webhook alert channel is functioning properly!",
             'success',
             [
                 'Channel' => $type,

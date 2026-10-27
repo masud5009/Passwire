@@ -153,6 +153,7 @@ class DataGuardrailPiiTest extends TestCase
         ]);
 
         $response->assertStatus(200);
+        $response->assertHeader('X-Passwire-Redacted-PII', '2');
         $response->assertHeader('X-OmniRoute-Redacted-PII', '2');
 
         // Verify upstream received REDACTED payload

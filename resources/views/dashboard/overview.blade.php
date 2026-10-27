@@ -264,7 +264,7 @@
                         <i data-lucide="key" class="w-7 h-7"></i>
                     </div>
                     <div class="text-base text-zinc-200 font-semibold">No provider keys connected yet</div>
-                    <p class="text-sm text-zinc-400 max-w-sm mx-auto">Add your free Groq, Gemini, OpenRouter, or OpenAI API key to start routing requests through OmniRoute.</p>
+                    <p class="text-sm text-zinc-400 max-w-sm mx-auto">Add your free Groq, Gemini, OpenRouter, or OpenAI API key to start routing requests through Passwire.</p>
                     <button type="button" @click="openAddKeyModal()" class="px-5 py-2.5 bg-emerald-500 text-white font-semibold text-sm rounded-xl shadow-lg hover:bg-emerald-400 transition-colors inline-flex items-center gap-2">
                         <i data-lucide="plus" class="w-4 h-4"></i>
                         <span>Connect Your First Key</span>
@@ -378,7 +378,7 @@ res = client.chat.completions.create(
 
 const client = new OpenAI({
   baseURL: '{{ url('/v1') }}',
-  apiKey: '{{ $gatewayKeys->first()?->key ?? 'sk-omni-...' }}',
+  apiKey: '{{ $gatewayKeys->first()?->key ?? 'sk-pw-...' }}',
 });
 const res = await client.chat.completions.create({
   model: 'auto',
@@ -388,7 +388,7 @@ const res = await client.chat.completions.create({
 
                 <div x-show="intTab === 'curl'" class="bg-[#09090b] rounded-xl p-3.5 border border-white/5 text-xs font-mono text-zinc-300 overflow-x-auto" x-cloak>
 <pre>curl {{ url('/v1/chat/completions') }} \
- -H "Authorization: Bearer {{ $gatewayKeys->first()?->key ?? 'sk-omni-...' }}" \
+ -H "Authorization: Bearer {{ $gatewayKeys->first()?->key ?? 'sk-pw-...' }}" \
  -d '{"model":"auto","messages":[{"role":"user","content":"Hi"}]}'</pre>
                 </div>
             </div>

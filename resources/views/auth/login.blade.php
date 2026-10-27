@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ ($globalSiteSettings->site_title ?? 'OmniRoute') }} - Sign In</title>
+    <title>{{ ($globalSiteSettings->site_title ?? 'Passwire') }} - Sign In</title>
     @if(isset($globalSiteSettings) && $globalSiteSettings->faviconUrl())
     <link rel="icon" href="{{ $globalSiteSettings->faviconUrl() }}">
     @endif
@@ -180,7 +180,7 @@
                 @endif
             </div>
             @if(!$loginLogo)
-                <h1 class="text-2xl font-bold tracking-tight text-white mt-4">{{ ($globalSiteSettings->site_title ?? 'OmniRoute') }}</h1>
+                <h1 class="text-2xl font-bold tracking-tight text-white mt-4">{{ ($globalSiteSettings->site_title ?? 'Passwire') }}</h1>
             @endif
         </div>
 

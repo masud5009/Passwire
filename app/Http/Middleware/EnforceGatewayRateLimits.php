@@ -18,7 +18,7 @@ class EnforceGatewayRateLimits
      */
     protected array $corsHeaders = [
         'Access-Control-Allow-Origin' => '*',
-        'Access-Control-Allow-Headers' => 'Authorization, Content-Type, X-Requested-With, x-api-key, X-OmniRoute-Key',
+        'Access-Control-Allow-Headers' => 'Authorization, Content-Type, X-Requested-With, x-api-key, X-Passwire-Key, X-OmniRoute-Key',
         'Access-Control-Allow-Methods' => 'GET, POST, OPTIONS',
     ];
 

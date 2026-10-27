@@ -13,8 +13,8 @@ return new class extends Migration
     {
         Schema::create('site_settings', function (Blueprint $table) {
             $table->id();
-            $table->string('site_title', 100)->default('OmniRoute');
-            $table->string('subtitle', 100)->default('Lite Gateway');
+            $table->string('site_title', 100)->default('Passwire');
+            $table->string('subtitle', 100)->default('AI Gateway');
             $table->string('version', 20)->default('v1.0');
             $table->string('logo_path')->nullable();
             $table->string('favicon_path')->nullable();

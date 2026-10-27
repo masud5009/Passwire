@@ -16,9 +16,9 @@ class VerifyGatewayKey
      */
     protected array $corsHeaders = [
         'Access-Control-Allow-Origin' => '*',
-        'Access-Control-Allow-Headers' => 'Authorization, Content-Type, X-Requested-With, x-api-key, X-OmniRoute-Key',
+        'Access-Control-Allow-Headers' => 'Authorization, Content-Type, X-Requested-With, x-api-key, X-Passwire-Key, X-OmniRoute-Key',
         'Access-Control-Allow-Methods' => 'GET, POST, OPTIONS',
-        'Access-Control-Expose-Headers' => 'X-OmniRoute-Provider, X-OmniRoute-Model, X-OmniRoute-Account, X-OmniRoute-Saved-Tokens, X-OmniRoute-Latency-Ms',
+        'Access-Control-Expose-Headers' => 'X-Passwire-Provider, X-Passwire-Model, X-Passwire-Account, X-Passwire-Saved-Tokens, X-Passwire-Latency-Ms, X-OmniRoute-Provider, X-OmniRoute-Model, X-OmniRoute-Account, X-OmniRoute-Saved-Tokens, X-OmniRoute-Latency-Ms',
     ];
 
     /**
@@ -60,7 +60,7 @@ class VerifyGatewayKey
         if (!$gatewayKey) {
             return response()->json([
                 'error' => [
-                    'message' => 'Invalid or missing OmniRoute Gateway API key.',
+                    'message' => 'Invalid or missing Passwire Gateway API key.',
                     'type' => 'invalid_request_error',
                     'code' => 'invalid_api_key',
                 ],

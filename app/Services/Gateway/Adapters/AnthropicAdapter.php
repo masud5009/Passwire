@@ -46,16 +46,18 @@ class AnthropicAdapter implements ProviderAdapterInterface
 
         foreach ($openaiPayload['messages'] ?? [] as $msg) {
             $role = $msg['role'] ?? 'user';
-            $content = $msg['content'] ?? '';
+            $rawContent = $msg['content'] ?? '';
 
             if ($role === 'system') {
-                if (is_string($content)) {
-                    $systemParts[] = trim($content);
-                } elseif (is_array($content)) {
+                if (is_string($rawContent)) {
+                    $systemParts[] = trim($rawContent);
+                } elseif (is_array($rawContent)) {
                     $textParts = [];
-                    foreach ($content as $item) {
+                    foreach ($rawContent as $item) {
                         if (is_array($item) && isset($item['text'])) {
                             $textParts[] = $item['text'];
+                        } elseif (is_string($item)) {
+                            $textParts[] = $item;
                         }
                     }
                     $systemParts[] = implode("\n", $textParts);
@@ -63,26 +65,92 @@ class AnthropicAdapter implements ProviderAdapterInterface
                 continue;
             }
 
-            // Map role for Anthropic ('user' or 'assistant')
+            // Parse and format message content blocks
+            $currContent = null;
+
+            if ($role === 'assistant' && !empty($msg['tool_calls'])) {
+                // Assistant message triggering tool calls
+                $blocks = [];
+                if (is_string($rawContent) && trim($rawContent) !== '') {
+                    $blocks[] = ['type' => 'text', 'text' => $rawContent];
+                }
+
+                foreach ($msg['tool_calls'] as $tc) {
+                    $args = $tc['function']['arguments'] ?? [];
+                    if (is_string($args)) {
+                        $decoded = json_decode($args, true);
+                        $args = is_array($decoded) ? $decoded : ($args === '' ? new \stdClass() : ['raw' => $args]);
+                    }
+                    if (empty($args)) {
+                        $args = new \stdClass();
+                    }
+
+                    $blocks[] = [
+                        'type' => 'tool_use',
+                        'id' => $tc['id'] ?? ('call_' . bin2hex(random_bytes(6))),
+                        'name' => $tc['function']['name'] ?? '',
+                        'input' => $args,
+                    ];
+                }
+                $currContent = $blocks;
+            } elseif ($role === 'tool') {
+                // User returning tool execution result
+                $contentStr = is_string($rawContent) ? $rawContent : json_encode($rawContent, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+                $currContent = [
+                    [
+                        'type' => 'tool_result',
+                        'tool_use_id' => $msg['tool_call_id'] ?? '',
+                        'content' => $contentStr,
+                    ],
+                ];
+            } elseif (is_array($rawContent)) {
+                // Multimodal or structured content
+                $blocks = [];
+                foreach ($rawContent as $item) {
+                    if (is_array($item) && ($item['type'] ?? '') === 'image_url' && !empty($item['image_url']['url'])) {
+                        $url = $item['image_url']['url'];
+                        if (str_starts_with($url, 'data:')) {
+                            if (preg_match('/^data:([^;]+);base64,(.+)$/', $url, $m)) {
+                                $blocks[] = [
+                                    'type' => 'image',
+                                    'source' => [
+                                        'type' => 'base64',
+                                        'media_type' => $m[1],
+                                        'data' => $m[2],
+                                    ],
+                                ];
+                            }
+                        }
+                    } elseif (is_array($item) && ($item['type'] ?? '') === 'text') {
+                        $blocks[] = ['type' => 'text', 'text' => $item['text'] ?? ''];
+                    } elseif (is_string($item)) {
+                        $blocks[] = ['type' => 'text', 'text' => $item];
+                    }
+                }
+                $currContent = !empty($blocks) ? $blocks : '';
+            } else {
+                $currContent = (string) $rawContent;
+            }
+
+            // Map role for Anthropic ('user' or 'assistant'). Tool results map to 'user'
             $mappedRole = ($role === 'assistant') ? 'assistant' : 'user';
 
-            // Anthropic strictly requires alternating roles.
+            // Anthropic strictly requires alternating roles. Merge consecutive turns with the same role.
             $lastIndex = count($anthropicMessages) - 1;
             if ($lastIndex >= 0 && $anthropicMessages[$lastIndex]['role'] === $mappedRole) {
                 $prev = $anthropicMessages[$lastIndex]['content'];
-                if (is_string($prev) && is_string($content)) {
-                    $anthropicMessages[$lastIndex]['content'] = $prev . "\n\n" . $content;
-                } elseif (is_array($prev) && is_array($content)) {
-                    $anthropicMessages[$lastIndex]['content'] = array_merge($prev, $content);
+
+                if (is_array($prev) || is_array($currContent)) {
+                    $prevBlocks = is_array($prev) ? $prev : [['type' => 'text', 'text' => (string) $prev]];
+                    $currBlocks = is_array($currContent) ? $currContent : [['type' => 'text', 'text' => (string) $currContent]];
+                    $anthropicMessages[$lastIndex]['content'] = array_merge($prevBlocks, $currBlocks);
                 } else {
-                    $prevStr = is_string($prev) ? $prev : json_encode($prev);
-                    $currStr = is_string($content) ? $content : json_encode($content);
-                    $anthropicMessages[$lastIndex]['content'] = $prevStr . "\n\n" . $currStr;
+                    $anthropicMessages[$lastIndex]['content'] = (string) $prev . "\n\n" . (string) $currContent;
                 }
             } else {
                 $anthropicMessages[] = [
                     'role' => $mappedRole,
-                    'content' => $content,
+                    'content' => $currContent,
                 ];
             }
         }
@@ -126,17 +194,68 @@ class AnthropicAdapter implements ProviderAdapterInterface
                 : [$openaiPayload['stop']];
         }
 
+        // Translate OpenAI tools to Anthropic format
+        if (!empty($openaiPayload['tools']) && is_array($openaiPayload['tools'])) {
+            $anthropicTools = [];
+            foreach ($openaiPayload['tools'] as $tool) {
+                if (($tool['type'] ?? '') === 'function' && isset($tool['function'])) {
+                    $fn = $tool['function'];
+                    $schema = $fn['parameters'] ?? [
+                        'type' => 'object',
+                        'properties' => new \stdClass(),
+                    ];
+                    $anthropicTools[] = [
+                        'name' => $fn['name'],
+                        'description' => $fn['description'] ?? '',
+                        'input_schema' => $schema,
+                    ];
+                }
+            }
+
+            if (!empty($anthropicTools)) {
+                $payload['tools'] = $anthropicTools;
+
+                if (isset($openaiPayload['tool_choice'])) {
+                    $tc = $openaiPayload['tool_choice'];
+                    if ($tc === 'auto') {
+                        $payload['tool_choice'] = ['type' => 'auto'];
+                    } elseif ($tc === 'required') {
+                        $payload['tool_choice'] = ['type' => 'any'];
+                    } elseif (is_array($tc) && isset($tc['function']['name'])) {
+                        $payload['tool_choice'] = [
+                            'type' => 'tool',
+                            'name' => $tc['function']['name'],
+                        ];
+                    }
+                }
+            }
+        }
+
         return $payload;
     }
 
     public function parseResponse(array $rawResponse, string $model): array
     {
         $content = '';
+        $toolCalls = [];
+
         if (isset($rawResponse['content'])) {
             if (is_array($rawResponse['content'])) {
                 foreach ($rawResponse['content'] as $block) {
-                    if (is_array($block) && ($block['type'] ?? '') === 'text') {
-                        $content .= $block['text'] ?? '';
+                    if (is_array($block)) {
+                        $bType = $block['type'] ?? '';
+                        if ($bType === 'text') {
+                            $content .= $block['text'] ?? '';
+                        } elseif ($bType === 'tool_use') {
+                            $toolCalls[] = [
+                                'id' => $block['id'] ?? ('call_' . bin2hex(random_bytes(8))),
+                                'type' => 'function',
+                                'function' => [
+                                    'name' => $block['name'] ?? '',
+                                    'arguments' => json_encode($block['input'] ?? new \stdClass(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+                                ],
+                            ];
+                        }
                     } elseif (is_string($block)) {
                         $content .= $block;
                     }
@@ -148,14 +267,24 @@ class AnthropicAdapter implements ProviderAdapterInterface
 
         $stopReason = $rawResponse['stop_reason'] ?? 'end_turn';
         $finishReason = match ($stopReason) {
+            'tool_use' => 'tool_calls',
             'end_turn' => 'stop',
             'max_tokens' => 'length',
             'stop_sequence' => 'stop',
-            default => 'stop',
+            default => !empty($toolCalls) ? 'tool_calls' : 'stop',
         };
 
         $promptTokens = (int) ($rawResponse['usage']['input_tokens'] ?? 0);
         $completionTokens = (int) ($rawResponse['usage']['output_tokens'] ?? 0);
+
+        $message = [
+            'role' => 'assistant',
+            'content' => $content !== '' ? $content : null,
+        ];
+
+        if (!empty($toolCalls)) {
+            $message['tool_calls'] = $toolCalls;
+        }
 
         return [
             'id' => $rawResponse['id'] ?? ('chatcmpl-' . bin2hex(random_bytes(12))),
@@ -165,10 +294,7 @@ class AnthropicAdapter implements ProviderAdapterInterface
             'choices' => [
                 [
                     'index' => 0,
-                    'message' => [
-                        'role' => 'assistant',
-                        'content' => $content,
-                    ],
+                    'message' => $message,
                     'finish_reason' => $finishReason,
                 ],
             ],
@@ -211,8 +337,9 @@ class AnthropicAdapter implements ProviderAdapterInterface
             return "data: [DONE]\n\n";
         }
 
-        if ($type === 'content_block_delta') {
-            $text = $data['delta']['text'] ?? '';
+        // Tool use starting
+        if ($type === 'content_block_start' && isset($data['content_block']['type']) && $data['content_block']['type'] === 'tool_use') {
+            $cb = $data['content_block'];
             $chunk = [
                 'id' => 'chatcmpl-chunk-' . substr(md5($model . microtime()), 0, 12),
                 'object' => 'chat.completion.chunk',
@@ -222,13 +349,104 @@ class AnthropicAdapter implements ProviderAdapterInterface
                     [
                         'index' => 0,
                         'delta' => [
-                            'content' => $text,
+                            'tool_calls' => [
+                                [
+                                    'index' => $data['index'] ?? 0,
+                                    'id' => $cb['id'] ?? ('call_' . bin2hex(random_bytes(6))),
+                                    'type' => 'function',
+                                    'function' => [
+                                        'name' => $cb['name'] ?? '',
+                                        'arguments' => '',
+                                    ],
+                                ],
+                            ],
                         ],
                     ],
                 ],
             ];
 
             return 'data: ' . json_encode($chunk, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "\n\n";
+        }
+
+        // Text delta or input_json_delta for tool calls
+        if ($type === 'content_block_delta') {
+            $d = $data['delta'] ?? [];
+            $dType = $d['type'] ?? '';
+
+            if ($dType === 'input_json_delta') {
+                $chunk = [
+                    'id' => 'chatcmpl-chunk-' . substr(md5($model . microtime()), 0, 12),
+                    'object' => 'chat.completion.chunk',
+                    'created' => time(),
+                    'model' => $model,
+                    'choices' => [
+                        [
+                            'index' => 0,
+                            'delta' => [
+                                'tool_calls' => [
+                                    [
+                                        'index' => $data['index'] ?? 0,
+                                        'function' => [
+                                            'arguments' => $d['partial_json'] ?? '',
+                                        ],
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                ];
+
+                return 'data: ' . json_encode($chunk, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "\n\n";
+            }
+
+            if ($dType === 'text_delta' || isset($d['text'])) {
+                $text = $d['text'] ?? '';
+                $chunk = [
+                    'id' => 'chatcmpl-chunk-' . substr(md5($model . microtime()), 0, 12),
+                    'object' => 'chat.completion.chunk',
+                    'created' => time(),
+                    'model' => $model,
+                    'choices' => [
+                        [
+                            'index' => 0,
+                            'delta' => [
+                                'content' => $text,
+                            ],
+                        ],
+                    ],
+                ];
+
+                return 'data: ' . json_encode($chunk, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "\n\n";
+            }
+        }
+
+        // Message finish reason delta
+        if ($type === 'message_delta') {
+            $stopReason = $data['delta']['stop_reason'] ?? null;
+            if ($stopReason !== null) {
+                $finishReason = match ($stopReason) {
+                    'tool_use' => 'tool_calls',
+                    'end_turn' => 'stop',
+                    'max_tokens' => 'length',
+                    default => 'stop',
+                };
+
+                $chunk = [
+                    'id' => 'chatcmpl-chunk-' . substr(md5($model . microtime()), 0, 12),
+                    'object' => 'chat.completion.chunk',
+                    'created' => time(),
+                    'model' => $model,
+                    'choices' => [
+                        [
+                            'index' => 0,
+                            'delta' => new \stdClass(),
+                            'finish_reason' => $finishReason,
+                        ],
+                    ],
+                ];
+
+                return 'data: ' . json_encode($chunk, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "\n\n";
+            }
         }
 
         return null;
