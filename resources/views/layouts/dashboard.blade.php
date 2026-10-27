@@ -418,6 +418,25 @@
             x-transition:leave="transition ease-in duration-100"
             x-transition:leave-start="opacity-100 scale-100"
             x-transition:leave-end="opacity-0 scale-95"
+            x-data="{
+                presets: {
+                    groq: { name: 'Groq Cloud', format: 'openai', base_url: 'https://api.groq.com/openai/v1', description: 'Ultra-fast LPU inference (Llama 3.3, Llama 3.1, Mixtral)' },
+                    deepseek: { name: 'DeepSeek', format: 'openai', base_url: 'https://api.deepseek.com', description: 'DeepSeek-V3 and DeepSeek-R1 reasoning models' },
+                    ollama: { name: 'Ollama (Local LLM)', format: 'openai', base_url: 'http://localhost:11434/v1', description: 'Self-hosted local models (Llama 3, Qwen, Mistral)' },
+                    openrouter: { name: 'OpenRouter', format: 'openai', base_url: 'https://openrouter.ai/api/v1', description: 'Unified gateway to 100+ open and proprietary models' },
+                    together: { name: 'Together AI', format: 'openai', base_url: 'https://api.together.xyz/v1', description: 'High-throughput open source model inference' },
+                    mistral: { name: 'Mistral AI', format: 'openai', base_url: 'https://api.mistral.ai/v1', description: 'Mistral Large, Codestral, and Pixtral vision models' },
+                    perplexity: { name: 'Perplexity', format: 'openai', base_url: 'https://api.perplexity.ai', description: 'Online search-augmented reasoning models' }
+                },
+                applyPreset(key) {
+                    if (!this.presets[key]) return;
+                    const p = this.presets[key];
+                    $refs.providerName.value = p.name;
+                    $refs.providerFormat.value = p.format;
+                    $refs.providerBaseUrl.value = p.base_url;
+                    $refs.providerDescription.value = p.description;
+                }
+            }"
             class="bg-[#121215] border border-white/[0.08] rounded-2xl w-full max-w-md p-6 shadow-2xl relative" @click.away="showProviderModal = false">
             <div class="flex items-center justify-between pb-3.5 border-b border-white/[0.06] mb-4">
                 <div class="flex items-center gap-2.5">
@@ -429,15 +448,33 @@
 
             <form action="{{ route('dashboard.providers.store') }}" method="POST" class="space-y-4">
                 @csrf
+
+                <!-- Popular Provider Presets Chips -->
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5 flex items-center justify-between">
+                        <span>⚡ 1-Click Popular Preset</span>
+                        <span class="text-[10px] text-emerald-400 font-normal">Click to auto-fill</span>
+                    </label>
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                        <button type="button" @click="applyPreset('groq')" class="px-2.5 py-1 text-xs rounded-lg bg-[#161c2c] hover:bg-emerald-500/20 text-zinc-300 hover:text-emerald-300 border border-white/10 hover:border-emerald-500/30 transition-all font-medium cursor-pointer">Groq</button>
+                        <button type="button" @click="applyPreset('deepseek')" class="px-2.5 py-1 text-xs rounded-lg bg-[#161c2c] hover:bg-emerald-500/20 text-zinc-300 hover:text-emerald-300 border border-white/10 hover:border-emerald-500/30 transition-all font-medium cursor-pointer">DeepSeek</button>
+                        <button type="button" @click="applyPreset('ollama')" class="px-2.5 py-1 text-xs rounded-lg bg-[#161c2c] hover:bg-emerald-500/20 text-zinc-300 hover:text-emerald-300 border border-white/10 hover:border-emerald-500/30 transition-all font-medium cursor-pointer">Ollama</button>
+                        <button type="button" @click="applyPreset('openrouter')" class="px-2.5 py-1 text-xs rounded-lg bg-[#161c2c] hover:bg-emerald-500/20 text-zinc-300 hover:text-emerald-300 border border-white/10 hover:border-emerald-500/30 transition-all font-medium cursor-pointer">OpenRouter</button>
+                        <button type="button" @click="applyPreset('together')" class="px-2.5 py-1 text-xs rounded-lg bg-[#161c2c] hover:bg-emerald-500/20 text-zinc-300 hover:text-emerald-300 border border-white/10 hover:border-emerald-500/30 transition-all font-medium cursor-pointer">Together</button>
+                        <button type="button" @click="applyPreset('mistral')" class="px-2.5 py-1 text-xs rounded-lg bg-[#161c2c] hover:bg-emerald-500/20 text-zinc-300 hover:text-emerald-300 border border-white/10 hover:border-emerald-500/30 transition-all font-medium cursor-pointer">Mistral</button>
+                        <button type="button" @click="applyPreset('perplexity')" class="px-2.5 py-1 text-xs rounded-lg bg-[#161c2c] hover:bg-emerald-500/20 text-zinc-300 hover:text-emerald-300 border border-white/10 hover:border-emerald-500/30 transition-all font-medium cursor-pointer">Perplexity</button>
+                    </div>
+                </div>
+
                 <div>
                     <label class="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">Provider Name</label>
-                    <input type="text" name="name" placeholder="e.g. Together AI, vLLM Local, Perplexity" required
+                    <input type="text" name="name" x-ref="providerName" placeholder="e.g. Together AI, vLLM Local, Perplexity" required
                         class="w-full bg-[#09090b] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500">
                 </div>
 
                 <div>
                     <label class="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">Protocol</label>
-                    <select name="format" class="w-full bg-[#09090b] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500">
+                    <select name="format" x-ref="providerFormat" class="w-full bg-[#09090b] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500">
                         <option value="openai">OpenAI (/chat/completions)</option>
                         <option value="anthropic">Anthropic (/messages)</option>
                         <option value="gemini">Google Gemini (:generateContent)</option>
@@ -446,13 +483,13 @@
 
                 <div>
                     <label class="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">Base URL</label>
-                    <input type="url" name="base_url" placeholder="https://api.together.xyz/v1" required
+                    <input type="url" name="base_url" x-ref="providerBaseUrl" placeholder="https://api.together.xyz/v1" required
                         class="w-full bg-[#09090b] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500 font-mono">
                 </div>
 
                 <div>
                     <label class="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">Description & Notes (Optional)</label>
-                    <textarea name="description" rows="3" placeholder="e.g. Website link, account email, login info, billing note, or documentation URL..."
+                    <textarea name="description" x-ref="providerDescription" rows="3" placeholder="e.g. Website link, account email, login info, billing note, or documentation URL..."
                         class="w-full bg-[#09090b] border border-white/10 rounded-xl p-3.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500 resize-none"></textarea>
                 </div>
 

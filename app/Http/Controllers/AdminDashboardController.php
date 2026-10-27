@@ -843,7 +843,7 @@ class AdminDashboardController extends Controller
             'id' => 'nullable|exists:routing_combos,id',
             'name' => 'required|string|max:100',
             'description' => 'nullable|string|max:255',
-            'strategy' => 'required|in:priority,round-robin',
+            'strategy' => 'required|in:priority,round-robin,lowest-cost,lowest-latency',
             'models' => 'required',
             'compression_modes' => 'nullable|array',
         ]);

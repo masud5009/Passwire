@@ -30,7 +30,14 @@ It pools multiple accounts per provider, automatically cooldowns keys that hit r
   Prevents cascade failures by tripping a circuit breaker after 5 consecutive account failures, protecting your application from hung connections.
 
 - 🔀 **Virtual Model Combos & Smart Routing**  
-  Create custom virtual models like `auto`, `auto/free`, or `auto/coding`. Route prompts using **Priority Fallback** (try Model A, fallback to Model B) or **Round-Robin Load Balancing**.
+  Create custom virtual models like `auto`, `auto/free`, or `auto/coding` with 4 intelligent routing strategies:
+  - **Priority Fallback**: Linear pipeline (try Model A, fallback to Model B on rate limits or errors).
+  - **Round-Robin**: Distribute load evenly across upstream models.
+  - **Lowest Cost First**: Automatically sorts the pipeline by pricing rates, routing to the cheapest model first.
+  - **Lowest Latency First**: Telemetry-driven routing that sorts by 24-hour rolling average response time.
+
+- ⚡ **1-Click Popular Provider Presets**  
+  Quickly connect top inference engines with one click: **Groq Cloud, DeepSeek, Ollama (Local LLM), OpenRouter, Together AI, Mistral AI, and Perplexity** with pre-configured endpoints and OpenAI protocol compatibility.
 
 - 🔄 **On-the-Fly Protocol Translation**  
   Send standard OpenAI-format chat completion requests; Passwire's native adapters translate them seamlessly into Google Gemini REST or Anthropic Messages protocols and normalize the responses back.

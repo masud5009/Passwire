@@ -69,8 +69,12 @@
                                 <span>{{ $combo->name }}</span>
                             </h3>
                             <div class="flex items-center gap-1.5">
-                                <span class="text-xs font-bold px-2.5 py-1 rounded-full {{ $combo->strategy === 'round-robin' ? 'bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/20' : 'bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-500/10 dark:text-indigo-300 dark:border-indigo-500/20' }}">
-                                    {{ $combo->strategy }}
+                                <span class="text-xs font-bold px-2.5 py-1 rounded-full {{ 
+                                    $combo->strategy === 'round-robin' ? 'bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/20' : 
+                                    ($combo->strategy === 'lowest-cost' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/20' : 
+                                    ($combo->strategy === 'lowest-latency' ? 'bg-cyan-50 text-cyan-700 border border-cyan-200 dark:bg-cyan-500/10 dark:text-cyan-300 dark:border-cyan-500/20' : 
+                                    'bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-500/10 dark:text-indigo-300 dark:border-indigo-500/20')) }}">
+                                    {{ str_replace('-', ' ', $combo->strategy) }}
                                 </span>
                                 <span class="text-xs font-bold px-2.5 py-1 rounded-full {{ $combo->is_active ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20' : 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400' }}">
                                     {{ $combo->is_active ? 'Active' : 'Paused' }}
@@ -207,6 +211,8 @@
                             <select name="strategy" class="w-full bg-zinc-50 dark:bg-[#09090b] border border-zinc-200 dark:border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-emerald-500">
                                 <option value="priority">Priority Fallback (Step 1 ➔ Step 2)</option>
                                 <option value="round-robin">Round-Robin (Rotate starting)</option>
+                                <option value="lowest-cost">Lowest Cost (Cheapest model first)</option>
+                                <option value="lowest-latency">Lowest Latency (Fastest responding first)</option>
                             </select>
                         </div>
                     </div>

@@ -49,7 +49,7 @@ class OmniRouterService
         if ($combo) {
             $models = $combo->models ?? [];
 
-            // If round-robin strategy, rotate the starting order
+            // 1a. If round-robin strategy, rotate the starting order
             if ($combo->strategy === 'round-robin' && count($models) > 1) {
                 $cacheKey = "combo_rr:{$combo->id}";
                 if (!Cache::has($cacheKey)) {
@@ -61,6 +61,42 @@ class OmniRouterService
                     array_slice($models, $offset),
                     array_slice($models, 0, $offset)
                 );
+            }
+
+            // 1b. If lowest-cost strategy, sort models by pricing rates (cheapest first)
+            if ($combo->strategy === 'lowest-cost' && count($models) > 1) {
+                usort($models, function ($a, $b) {
+                    $pricingA = $this->costCalculator->getPricingForModel($a);
+                    $pricingB = $this->costCalculator->getPricingForModel($b);
+                    $totalA = $pricingA['input'] + $pricingA['output'];
+                    $totalB = $pricingB['input'] + $pricingB['output'];
+                    return $totalA <=> $totalB;
+                });
+            }
+
+            // 1c. If lowest-latency strategy, sort models by recent 24h average latency
+            if ($combo->strategy === 'lowest-latency' && count($models) > 1) {
+                $avgLatencies = Cache::remember("combo_latency:{$combo->id}", 60, function () use ($models) {
+                    $map = [];
+                    foreach ($models as $m) {
+                        $modelOnly = str_contains($m, '/') ? explode('/', $m, 2)[1] : $m;
+                        $avg = GatewayLog::where('status_code', 200)
+                            ->where(function ($q) use ($m, $modelOnly) {
+                                $q->where('routed_model', $modelOnly)
+                                  ->orWhere('routed_model', $m);
+                            })
+                            ->where('created_at', '>=', now()->subHours(24))
+                            ->avg('latency_ms');
+                        $map[$m] = $avg !== null ? (float) $avg : 999999.0;
+                    }
+                    return $map;
+                });
+
+                usort($models, function ($a, $b) use ($avgLatencies) {
+                    $latA = $avgLatencies[$a] ?? 999999.0;
+                    $latB = $avgLatencies[$b] ?? 999999.0;
+                    return $latA <=> $latB;
+                });
             }
 
             $targets = [];
