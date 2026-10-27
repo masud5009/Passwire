@@ -15,7 +15,7 @@ class PlaygroundModelFilterTest extends TestCase
     use DatabaseTransactions;
     public function test_playground_only_shows_configured_providers_and_ready_combos(): void
     {
-        $admin = User::first() ?? User::factory()->create(['email' => 'admin@omniroute.local']);
+        $admin = User::first() ?? User::factory()->create(['email' => 'admin@passwire.local']);
 
         // Check playground dedicated view rendering
         $response = $this->actingAs($admin)->get('/dashboard/playground');
@@ -60,7 +60,7 @@ class PlaygroundModelFilterTest extends TestCase
             ], 200),
         ]);
 
-        $admin = User::first() ?? User::factory()->create(['email' => 'admin@omniroute.local']);
+        $admin = User::first() ?? User::factory()->create(['email' => 'admin@passwire.local']);
 
         // Test the account
         $res = $this->actingAs($admin)->postJson(route('dashboard.accounts.test', $account));
@@ -118,7 +118,7 @@ class PlaygroundModelFilterTest extends TestCase
             ], 200),
         ]);
 
-        $admin = User::first() ?? User::factory()->create(['email' => 'admin@omniroute.local']);
+        $admin = User::first() ?? User::factory()->create(['email' => 'admin@passwire.local']);
 
         $res = $this->actingAs($admin)->postJson(route('dashboard.playground.chat'), [
             'model' => "{$provider->slug}/mock-gpt-4o",
@@ -153,7 +153,7 @@ class PlaygroundModelFilterTest extends TestCase
             'fail_count' => 3,
         ]);
 
-        $admin = User::first() ?? User::factory()->create(['email' => 'admin@omniroute.local']);
+        $admin = User::first() ?? User::factory()->create(['email' => 'admin@passwire.local']);
 
         $res = $this->actingAs($admin)->postJson(route('dashboard.accounts.clear-cooldown', $account));
 

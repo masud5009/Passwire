@@ -24,7 +24,8 @@ Route::middleware('auth')->prefix('dashboard')->name('dashboard.')->group(functi
     Route::get('/providers/{provider}', [AdminDashboardController::class, 'providerDetail'])->name('providers.show');
     Route::post('/providers/{provider}/import-models', [AdminDashboardController::class, 'importModels'])->name('providers.import-models');
     Route::get('/combos', [AdminDashboardController::class, 'combos'])->name('combos');
-    Route::get('/gateway-keys', [AdminDashboardController::class, 'gatewayKeys'])->name('gateway-keys');
+    Route::get('/api-keys', [AdminDashboardController::class, 'gatewayKeys'])->name('api-keys');
+    Route::redirect('/gateway-keys', '/dashboard/api-keys')->name('gateway-keys');
     Route::get('/playground', [AdminDashboardController::class, 'playground'])->name('playground');
     Route::get('/logs', [AdminDashboardController::class, 'logs'])->name('logs');
     Route::get('/alerts', [AdminDashboardController::class, 'alerts'])->name('alerts');
@@ -47,7 +48,13 @@ Route::middleware('auth')->prefix('dashboard')->name('dashboard.')->group(functi
     Route::post('/combos/{combo}/toggle', [AdminDashboardController::class, 'toggleCombo'])->name('combos.toggle');
     Route::delete('/combos/{combo}', [AdminDashboardController::class, 'deleteCombo'])->name('combos.delete');
 
-    // Gateway Keys
+    // API Keys (Primary)
+    Route::post('/api-keys', [AdminDashboardController::class, 'storeGatewayKey'])->name('api-keys.store');
+    Route::put('/api-keys/{gatewayKey}', [AdminDashboardController::class, 'updateGatewayKey'])->name('api-keys.update');
+    Route::post('/api-keys/{gatewayKey}/toggle', [AdminDashboardController::class, 'toggleGatewayKey'])->name('api-keys.toggle');
+    Route::delete('/api-keys/{gatewayKey}', [AdminDashboardController::class, 'deleteGatewayKey'])->name('api-keys.delete');
+
+    // Backward-compatible gateway-keys aliases
     Route::post('/gateway-keys', [AdminDashboardController::class, 'storeGatewayKey'])->name('gateway-keys.store');
     Route::put('/gateway-keys/{gatewayKey}', [AdminDashboardController::class, 'updateGatewayKey'])->name('gateway-keys.update');
     Route::post('/gateway-keys/{gatewayKey}/toggle', [AdminDashboardController::class, 'toggleGatewayKey'])->name('gateway-keys.toggle');

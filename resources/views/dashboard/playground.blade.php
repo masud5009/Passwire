@@ -203,7 +203,7 @@
 
                 const data = await res.json();
                 const choices = data.choices || data.response?.choices;
-                const meta = data._omniroute_meta || data.meta || data.response?._omniroute_meta;
+                const meta = data._passwire_meta || data._omniroute_meta || data.meta || data.response?._passwire_meta || data.response?._omniroute_meta;
 
                 if (res.ok && choices && choices[0]) {
                     const assistantText = choices[0].message?.content || choices[0].text || '';

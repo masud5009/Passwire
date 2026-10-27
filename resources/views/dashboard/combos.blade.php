@@ -1,6 +1,6 @@
 @extends('layouts.dashboard')
 
-@section('title', 'Smart Combos & Fallback Router')
+@section('title', 'Smart Combos')
 
 @section('content')
 @php

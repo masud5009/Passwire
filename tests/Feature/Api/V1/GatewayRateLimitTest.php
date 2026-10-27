@@ -110,7 +110,7 @@ class GatewayRateLimitTest extends TestCase
     public function test_admin_can_update_gateway_key_rate_limits(): void
     {
         $admin = User::first() ?? User::factory()->create([
-            'email' => 'admin@omniroute.local',
+            'email' => 'admin@passwire.local',
             'is_admin' => true,
         ]);
 
@@ -123,14 +123,14 @@ class GatewayRateLimitTest extends TestCase
             'is_active' => true,
         ]);
 
-        $response = $this->actingAs($admin)->from('/dashboard/gateway-keys')->put("/dashboard/gateway-keys/{$key->id}", [
+        $response = $this->actingAs($admin)->from('/dashboard/api-keys')->put("/dashboard/api-keys/{$key->id}", [
             'name' => 'Updated Production Key',
             'daily_token_limit' => 500000,
             'rpm_limit' => 120,
             'tpm_limit' => 400000,
         ]);
 
-        $response->assertRedirect('/dashboard/gateway-keys');
+        $response->assertRedirect('/dashboard/api-keys');
 
         $key->refresh();
         $this->assertEquals('Updated Production Key', $key->name);

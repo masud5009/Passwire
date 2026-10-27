@@ -916,6 +916,7 @@ class AdminDashboardController extends Controller
             $result = $this->router->dispatchSync($request->all());
 
             $response = $result['response'];
+            $response['_passwire_meta'] = $result['meta'];
             $response['_omniroute_meta'] = $result['meta'];
             $response['meta'] = $result['meta'];
             $response['success'] = true;

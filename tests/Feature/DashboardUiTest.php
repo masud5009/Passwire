@@ -25,7 +25,7 @@ class DashboardUiTest extends TestCase
     public function test_all_dedicated_dashboard_routes_render_flawlessly(): void
     {
         $admin = User::first() ?? User::factory()->create([
-            'email' => 'admin@omniroute.local',
+            'email' => 'admin@passwire.local',
             'is_admin' => true,
         ]);
 
@@ -65,11 +65,14 @@ class DashboardUiTest extends TestCase
         $resCombos->assertSee('Smart Combos', false);
         $resCombos->assertSee('Fallback Pipeline Sequence', false);
 
-        // 4. Gateway Keys Route
-        $resKeys = $this->actingAs($admin)->get('/dashboard/gateway-keys');
+        // 4. API Keys Route (Primary + legacy redirect)
+        $resKeys = $this->actingAs($admin)->get('/dashboard/api-keys');
         $resKeys->assertStatus(200);
-        $resKeys->assertSee('Client Gateway API Keys', false);
+        $resKeys->assertSee('API Keys', false);
         $resKeys->assertSee('Daily Token Quota', false);
+
+        $resLegacyKeys = $this->actingAs($admin)->get('/dashboard/gateway-keys');
+        $resLegacyKeys->assertRedirect('/dashboard/api-keys');
 
         // 5. Playground Route
         $resPlayground = $this->actingAs($admin)->get('/dashboard/playground');

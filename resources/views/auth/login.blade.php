@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ ($globalSiteSettings->site_title ?? 'Passwire') }} - Sign In</title>
-    @if(isset($globalSiteSettings) && $globalSiteSettings->faviconUrl())
-    <link rel="icon" href="{{ $globalSiteSettings->faviconUrl() }}">
-    @endif
+    <title>Passwire - Sign In</title>
+    <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
+    <link rel="alternate icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
 
     <!-- Theme Initializer -->
     <script>
@@ -160,28 +159,17 @@
         <!-- Brand Header -->
         <div class="text-center mb-8">
             <div class="inline-flex items-center justify-center relative group">
-                @php($loginLogoDark = isset($globalSiteSettings) ? $globalSiteSettings->logoDarkUrl() : null)
-                @php($loginLogoLight = isset($globalSiteSettings) ? $globalSiteSettings->logoLightUrl() : null)
-                @php($loginLogo = $loginLogoDark ?? $loginLogoLight ?? (isset($globalSiteSettings) ? $globalSiteSettings->logoUrl() : null))
-                @if($loginLogoDark || $loginLogoLight)
-                    @if($loginLogoDark)
-                        <img src="{{ $loginLogoDark }}" alt="Logo" class="brand-logo-dark max-w-[220px] max-h-20 w-auto h-auto object-contain relative z-10">
-                    @endif
-                    @if($loginLogoLight)
-                        <img src="{{ $loginLogoLight }}" alt="Logo" class="brand-logo-light max-w-[220px] max-h-20 w-auto h-auto object-contain relative z-10">
-                    @endif
-                @elseif($loginLogo)
-                    <img src="{{ $loginLogo }}" alt="Logo" class="max-w-[220px] max-h-20 w-auto h-auto object-contain relative z-10">
-                @else
-                    <div class="w-14 h-14 rounded-2xl bg-gradient-to-b from-zinc-800 to-zinc-900 border border-white/10 shadow-2xl flex items-center justify-center relative overflow-hidden">
-                        <div class="absolute inset-0 rounded-2xl bg-emerald-500/20 blur group-hover:bg-emerald-500/30 transition-colors"></div>
-                        <i data-lucide="zap" class="w-7 h-7 text-emerald-400 relative z-10"></i>
+                <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-600 p-[1.5px] shadow-2xl shadow-emerald-500/30 flex items-center justify-center relative overflow-hidden group-hover:scale-105 transition-transform duration-300">
+                    <div class="w-full h-full bg-[#0d121c] rounded-[14px] flex items-center justify-center relative">
+                        <div class="absolute inset-0 bg-emerald-500/10 rounded-[14px] blur-sm"></div>
+                        <i data-lucide="zap" class="w-8 h-8 text-emerald-400 fill-emerald-400/25 relative z-10"></i>
                     </div>
-                @endif
+                </div>
             </div>
-            @if(!$loginLogo)
-                <h1 class="text-2xl font-bold tracking-tight text-white mt-4">{{ ($globalSiteSettings->site_title ?? 'Passwire') }}</h1>
-            @endif
+            <h1 class="text-3xl font-extrabold tracking-tight text-white mt-4 flex items-center justify-center gap-1.5">
+                <span>Pass<span class="text-emerald-400">wire</span></span>
+            </h1>
+            <p class="text-xs text-zinc-400 mt-1.5 font-medium">Self-Hosted Fault-Tolerant AI Gateway & Key Pooler</p>
         </div>
 
         <!-- Login Card -->

@@ -53,7 +53,7 @@ class GatewayController extends Controller
                 'id' => $combo->name,
                 'object' => 'model',
                 'created' => $combo->created_at?->timestamp ?? time(),
-                'owned_by' => 'omniroute',
+                'owned_by' => 'passwire',
                 'permission' => [],
                 'root' => $combo->name,
                 'parent' => null,

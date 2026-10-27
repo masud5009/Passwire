@@ -19,7 +19,7 @@ class VisualAnalyticsTest extends TestCase
     public function test_admin_can_fetch_today_chart_analytics(): void
     {
         $admin = User::first() ?? User::factory()->create([
-            'email' => 'admin@omniroute.local',
+            'email' => 'admin@passwire.local',
             'is_admin' => true,
         ]);
 
@@ -73,7 +73,7 @@ class VisualAnalyticsTest extends TestCase
     public function test_admin_can_fetch_7d_and_30d_analytics(): void
     {
         $admin = User::first() ?? User::factory()->create([
-            'email' => 'admin@omniroute.local',
+            'email' => 'admin@passwire.local',
             'is_admin' => true,
         ]);
 
@@ -93,7 +93,7 @@ class VisualAnalyticsTest extends TestCase
     public function test_overview_page_renders_with_visual_analytics_containers(): void
     {
         $admin = User::first() ?? User::factory()->create([
-            'email' => 'admin@omniroute.local',
+            'email' => 'admin@passwire.local',
             'is_admin' => true,
         ]);
 

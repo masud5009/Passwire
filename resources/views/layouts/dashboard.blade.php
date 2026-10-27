@@ -4,11 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    @php($brandTitle = $globalSiteSettings->site_title ?? 'Passwire')
-    @php($brandVersion = $globalSiteSettings->version ?? 'v1.0')
-    @php($brandFavicon = isset($globalSiteSettings) ? $globalSiteSettings->faviconUrl() : null)
-    <title>{{ $brandTitle }} - @yield('title', 'AI Gateway Console')</title>
-    <link rel="icon" type="image/x-icon" href="{{ $brandFavicon ?? asset('favicon.ico') }}">
+    <title>Passwire - @yield('title', 'AI Gateway Console')</title>
+    <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
+    <link rel="alternate icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
 
     <!-- Theme Initializer (Prevents Theme Flash / FOUC) -->
     <script>
@@ -102,24 +100,21 @@
         <aside class="w-64 h-screen bg-[#10141e] border-r border-white/[0.07] flex flex-col justify-between flex-shrink-0 z-30 select-none">
             <!-- Sidebar Top: Brand -->
             <div>
-                @php($brandLogoDark = isset($globalSiteSettings) ? $globalSiteSettings->logoDarkUrl() : null)
-                @php($brandLogoLight = isset($globalSiteSettings) ? $globalSiteSettings->logoLightUrl() : null)
-                @php($brandLogo = $brandLogoDark ?? $brandLogoLight ?? (isset($globalSiteSettings) ? $globalSiteSettings->logoUrl() : null))
-                <a href="{{ route('dashboard.overview') }}" class="px-4 py-3 border-b border-white/[0.07] flex items-center justify-center hover:bg-white/[0.02] transition-colors">
-                    @if($brandLogoDark || $brandLogoLight)
-                        @if($brandLogoDark)
-                            <img src="{{ $brandLogoDark }}" alt="{{ $brandTitle ?? 'Passwire' }} logo" class="brand-logo-dark w-full max-w-[190px] h-11 object-contain object-center">
-                        @endif
-                        @if($brandLogoLight)
-                            <img src="{{ $brandLogoLight }}" alt="{{ $brandTitle ?? 'Passwire' }} logo" class="brand-logo-light w-full max-w-[190px] h-11 object-contain object-center">
-                        @endif
-                    @elseif($brandLogo)
-                        <img src="{{ $brandLogo }}" alt="{{ $brandTitle ?? 'Passwire' }} logo" class="w-full max-w-[190px] h-11 object-contain object-center">
-                    @else
-                        <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-zinc-800 to-zinc-900 border border-white/10 flex items-center justify-center shadow-lg">
-                            <i data-lucide="zap" class="w-4 h-4 text-emerald-400"></i>
+                <a href="{{ route('dashboard.overview') }}" class="px-5 py-4 border-b border-white/[0.07] flex items-center justify-between hover:bg-white/[0.02] transition-colors group">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 p-[1px] shadow-lg shadow-emerald-500/20 flex-shrink-0 group-hover:shadow-emerald-500/35 transition-all">
+                            <div class="w-full h-full bg-[#0d121c] rounded-[11px] flex items-center justify-center">
+                                <i data-lucide="zap" class="w-5 h-5 text-emerald-400 fill-emerald-400/20"></i>
+                            </div>
                         </div>
-                    @endif
+                        <div class="flex flex-col min-w-0">
+                            <div class="flex items-center gap-1.5">
+                                <span class="text-base font-extrabold text-white tracking-tight">Pass<span class="text-emerald-400">wire</span></span>
+                            </div>
+                            <span class="text-[10px] font-semibold text-zinc-400 tracking-wider uppercase font-mono">AI Gateway</span>
+                        </div>
+                    </div>
+                    <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">v1.0</span>
                 </a>
 
                 <!-- Navigation Links with Dedicated Routes -->
@@ -169,16 +164,16 @@
                         <span class="text-[11px] px-1.5 py-0.5 rounded font-mono bg-zinc-800 text-zinc-400">{{ $sidebarCombosCount }}</span>
                     </a>
 
-                    <!-- 4. Gateway Client Keys -->
-                    <a href="{{ route('dashboard.gateway-keys') }}"
+                    <!-- 4. API Keys -->
+                    <a href="{{ route('dashboard.api-keys') }}"
                         @class([
                             'w-full py-2 px-3 rounded-xl text-xs sm:text-sm flex items-center justify-between transition-all group',
-                            'bg-white/[0.08] text-white font-semibold border-l-2 border-emerald-400 pl-2.5' => request()->routeIs('dashboard.gateway-keys'),
-                            'text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.03]' => !request()->routeIs('dashboard.gateway-keys'),
+                            'bg-white/[0.08] text-white font-semibold border-l-2 border-emerald-400 pl-2.5' => request()->routeIs('dashboard.api-keys', 'dashboard.gateway-keys'),
+                            'text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.03]' => !request()->routeIs('dashboard.api-keys', 'dashboard.gateway-keys'),
                         ])>
                         <div class="flex items-center gap-2.5">
-                            <i data-lucide="key-round" class="w-4 h-4 transition-colors {{ request()->routeIs('dashboard.gateway-keys') ? 'text-emerald-400' : 'text-zinc-500 group-hover:text-zinc-300' }}"></i>
-                            <span>Gateway Keys</span>
+                            <i data-lucide="key-round" class="w-4 h-4 transition-colors {{ request()->routeIs('dashboard.gateway-keys', 'dashboard.api-keys') ? 'text-emerald-400' : 'text-zinc-500 group-hover:text-zinc-300' }}"></i>
+                            <span>API Keys</span>
                         </div>
                         <span class="text-[11px] px-1.5 py-0.5 rounded font-mono bg-zinc-800 text-zinc-400">{{ $sidebarKeysCount }}</span>
                     </a>

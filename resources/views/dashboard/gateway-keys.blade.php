@@ -1,6 +1,6 @@
 @extends('layouts.dashboard')
 
-@section('title', 'Client Gateway API Keys')
+@section('title', 'API Keys')
 
 @section('content')
 <div class="space-y-6" x-data="{
@@ -20,7 +20,7 @@
             daily_token_limit: key.daily_token_limit || '',
             rpm_limit: key.rpm_limit || '',
             tpm_limit: key.tpm_limit || '',
-            updateUrl: '/dashboard/gateway-keys/' + key.id
+            updateUrl: '/dashboard/api-keys/' + key.id
         };
         this.editModalOpen = true;
     }
@@ -30,12 +30,12 @@
         <div class="border-b border-white/[0.06] pb-3">
             <h3 class="text-sm font-bold text-white flex items-center gap-2">
                 <i data-lucide="key" class="w-4 h-4 text-emerald-400"></i>
-                <span>Generate Client API Key</span>
+                <span>Create New API Key</span>
             </h3>
             <p class="text-xs text-zinc-400 mt-0.5">Provision secure virtual keys for external IDEs, agents, or microservices with granular rate limit enforcement.</p>
         </div>
 
-        <form action="{{ route('dashboard.gateway-keys.store') }}" method="POST" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 items-end">
+        <form action="{{ route('dashboard.api-keys.store') }}" method="POST" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 items-end">
             @csrf
             <div class="lg:col-span-2">
                 <label class="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">Client Label</label>
@@ -66,7 +66,7 @@
             <div class="sm:col-span-2 lg:col-span-5 flex justify-end pt-1">
                 <button type="submit" class="btn-primary w-full sm:w-auto px-5 py-2.5 text-white font-semibold text-sm rounded-xl shadow-md transition-colors whitespace-nowrap flex items-center justify-center gap-2 cursor-pointer">
                     <i data-lucide="plus" class="w-4 h-4"></i>
-                    <span>Generate Virtual Key</span>
+                    <span>Create API Key</span>
                 </button>
             </div>
         </form>
@@ -154,7 +154,7 @@
                                         </button>
 
                                         <!-- Pause / Enable Toggle -->
-                                        <form action="{{ route('dashboard.gateway-keys.toggle', $gKey) }}" method="POST">
+                                        <form action="{{ route('dashboard.api-keys.toggle', $gKey) }}" method="POST">
                                             @csrf
                                             <button type="submit" class="p-2 rounded-xl transition-colors cursor-pointer {{ $gKey->is_active ? 'text-amber-400 hover:bg-amber-500/10' : 'text-emerald-400 hover:bg-emerald-500/10' }}" title="{{ $gKey->is_active ? 'Pause Key' : 'Enable Key' }}">
                                                 <i data-lucide="{{ $gKey->is_active ? 'pause-circle' : 'play-circle' }}" class="w-4 h-4 pointer-events-none"></i>
@@ -162,11 +162,11 @@
                                         </form>
 
                                         <!-- Delete Button -->
-                                        <form action="{{ route('dashboard.gateway-keys.delete', $gKey) }}" method="POST">
+                                        <form action="{{ route('dashboard.api-keys.delete', $gKey) }}" method="POST">
                                             @csrf
                                             @method('DELETE')
                                             <button type="button"
-                                                @click="confirmDelete($el.closest('form'), 'Delete Gateway Key', 'Permanently delete gateway key &quot;{{ $gKey->name }}&quot;? External clients using this key will immediately lose access.', 'Yes, Delete Key')"
+                                                @click="confirmDelete($el.closest('form'), 'Delete API Key', 'Permanently delete API key &quot;{{ $gKey->name }}&quot;? External clients using this key will immediately lose access.', 'Yes, Delete Key')"
                                                 class="p-2 text-zinc-500 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-colors cursor-pointer" title="Delete Key">
                                                 <i data-lucide="trash-2" class="w-4 h-4 pointer-events-none"></i>
                                             </button>
@@ -183,8 +183,8 @@
                 <div class="w-14 h-14 rounded-2xl bg-zinc-800/80 border border-white/5 mx-auto flex items-center justify-center text-zinc-400 mb-3.5">
                     <i data-lucide="key-round" class="w-7 h-7"></i>
                 </div>
-                <div class="text-base text-zinc-300 font-semibold">No gateway keys generated yet</div>
-                <p class="text-xs text-zinc-500 mt-1 max-w-sm mx-auto">Generate your first virtual key above to start routing requests.</p>
+                <div class="text-base text-zinc-300 font-semibold">No API keys created yet</div>
+                <p class="text-xs text-zinc-500 mt-1 max-w-sm mx-auto">Create your first API key above to start routing requests.</p>
             </div>
         @endif
     </div>

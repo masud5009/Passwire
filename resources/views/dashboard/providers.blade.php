@@ -1,6 +1,6 @@
 @extends('layouts.dashboard')
 
-@section('title', 'AI Providers & Key Pool')
+@section('title', 'AI Providers')
 
 @section('content')
 @php

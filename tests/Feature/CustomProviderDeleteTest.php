@@ -13,7 +13,7 @@ class CustomProviderDeleteTest extends TestCase
     use DatabaseTransactions;
     public function test_custom_provider_can_be_deleted(): void
     {
-        $admin = User::first() ?? User::factory()->create(['email' => 'admin@omniroute.local']);
+        $admin = User::first() ?? User::factory()->create(['email' => 'admin@passwire.local']);
 
         $custom = AiProvider::create([
             'name' => 'My Custom Local LLM',
@@ -41,7 +41,7 @@ class CustomProviderDeleteTest extends TestCase
 
     public function test_any_provider_can_be_deleted(): void
     {
-        $admin = User::first() ?? User::factory()->create(['email' => 'admin@omniroute.local']);
+        $admin = User::first() ?? User::factory()->create(['email' => 'admin@passwire.local']);
 
         $provider = AiProvider::create([
             'name' => 'Test Provider to Delete',

@@ -123,7 +123,7 @@
                     <span x-text="webhookType === 'discord' ? 'Discord Webhook URL' : (webhookType === 'slack' ? 'Slack Webhook URL' : 'HTTP Webhook Endpoint')"></span>
                 </label>
                 <input type="url" name="webhook_url" value="{{ $alertSettings->webhook_url }}"
-                    :placeholder="webhookType === 'discord' ? 'https://discord.com/api/webhooks/123456789/token...' : (webhookType === 'slack' ? 'https://hooks.slack.com/services/T.../B.../...' : 'https://api.yourdomain.com/webhooks/omniroute')"
+                    :placeholder="webhookType === 'discord' ? 'https://discord.com/api/webhooks/123456789/token...' : (webhookType === 'slack' ? 'https://hooks.slack.com/services/T.../B.../...' : 'https://api.yourdomain.com/webhooks/passwire')"
                     class="w-full bg-[#09090b] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500 font-mono">
                 <p class="text-xs text-zinc-500">Incoming payloads will be formatted specifically for the selected service.</p>
             </div>

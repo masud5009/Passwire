@@ -130,7 +130,7 @@ class AlertNotificationTest extends TestCase
         ]);
 
         $admin = User::first() ?? User::factory()->create([
-            'email' => 'admin@omniroute.local',
+            'email' => 'admin@passwire.local',
             'is_admin' => true,
         ]);
 

@@ -173,7 +173,7 @@ class DataGuardrailPiiTest extends TestCase
     public function test_admin_can_save_combo_with_pii_guardrail(): void
     {
         $admin = User::first() ?? User::factory()->create([
-            'email' => 'admin@omniroute.local',
+            'email' => 'admin@passwire.local',
             'is_admin' => true,
         ]);
 
