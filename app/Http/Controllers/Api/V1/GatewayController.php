@@ -160,6 +160,53 @@ class GatewayController extends Controller
     }
 
     /**
+     * Handle Embeddings creation (POST /v1/embeddings).
+     */
+    public function embeddings(Request $request): JsonResponse
+    {
+        /** @var GatewayKey|null $gatewayKey */
+        $gatewayKey = $request->attributes->get('gateway_key');
+        $payload = $request->all();
+
+        if (empty($payload['input'])) {
+            return response()->json([
+                'error' => [
+                    'message' => 'Missing required parameter: input.',
+                    'type' => 'invalid_request_error',
+                    'code' => 'missing_parameter',
+                ],
+            ], 400);
+        }
+
+        try {
+            $result = $this->router->dispatchEmbeddingSync($payload, $gatewayKey);
+
+            return response()->json($result['response'], 200, [
+                'X-Passwire-Provider' => $result['meta']['provider'] ?? '',
+                'X-Passwire-Model' => $result['meta']['model'] ?? '',
+                'X-Passwire-Account' => $result['meta']['account'] ?? '',
+                'X-Passwire-Cost-USD' => (string) ($result['meta']['cost_usd'] ?? 0),
+                'X-Passwire-Redacted-PII' => (string) ($result['meta']['redacted_pii_count'] ?? 0),
+                'X-Passwire-Latency-Ms' => (string) ($result['meta']['latency_ms'] ?? 0),
+                'X-OmniRoute-Provider' => $result['meta']['provider'] ?? '',
+                'X-OmniRoute-Model' => $result['meta']['model'] ?? '',
+                'X-OmniRoute-Account' => $result['meta']['account'] ?? '',
+                'X-OmniRoute-Cost-USD' => (string) ($result['meta']['cost_usd'] ?? 0),
+                'X-OmniRoute-Redacted-PII' => (string) ($result['meta']['redacted_pii_count'] ?? 0),
+                'X-OmniRoute-Latency-Ms' => (string) ($result['meta']['latency_ms'] ?? 0),
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'error' => [
+                    'message' => $e->getMessage(),
+                    'type' => 'api_error',
+                    'code' => 'gateway_embedding_dispatch_error',
+                ],
+            ], 502);
+        }
+    }
+
+    /**
      * Stream completions using shared-hosting compatible SSE via native cURL.
      */
     public function streamCompletions(array $payload, ?GatewayKey $gatewayKey): StreamedResponse

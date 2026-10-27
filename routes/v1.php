@@ -11,4 +11,7 @@ Route::middleware([VerifyGatewayKey::class, EnforceGatewayRateLimits::class])->g
 
     Route::options('/chat/completions', fn () => response('', 204));
     Route::post('/chat/completions', [GatewayController::class, 'chatCompletions']);
+
+    Route::options('/embeddings', fn () => response('', 204));
+    Route::post('/embeddings', [GatewayController::class, 'embeddings']);
 });

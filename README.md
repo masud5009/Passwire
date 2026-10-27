@@ -59,31 +59,26 @@ It pools multiple accounts per provider, automatically cooldowns keys that hit r
 
 ### 1. Clone & Install Dependencies
 ```bash
-git clone https://github.com/your-username/passwire.git
-cd passwire
+git clone https://github.com/masud5009/Passwire.git
+cd Passwire
 
 composer install
 npm install && npm run build
 ```
 
-### 2. Environment Configuration
+### 2. One-Command Setup
+Run the automated installer to set up `.env`, run migrations, seed providers, and configure the administrator:
 ```bash
-cp .env.example .env
-php artisan key:generate
-```
-
-### 3. Run Migrations & Seeders
-```bash
-php artisan migrate --seed
+php artisan passwire:install
 ```
 
 > **Default Admin Credentials:**
 > - **URL:** `http://localhost:8000/login`
 > - **Email:** `admin@passwire.local`
 > - **Password:** `password`
-> - **Default Gateway Key:** `sk-pw-master-key-1234567890abcdef`
+> - **Master Gateway Key:** `sk-pw-master-key-1234567890abcdef`
 
-### 4. Start the Application
+### 3. Start the Application
 ```bash
 php artisan serve
 ```
@@ -140,6 +135,13 @@ response = client.chat.completions.create(
 )
 
 print(response.choices[0].message.content)
+
+# Embeddings API (for RAG & Vector Search)
+embedding = client.embeddings.create(
+    model="text-embedding-3-small", # or gemini/text-embedding-004
+    input="Passwire AI Gateway simplifies model routing and failover."
+)
+print("Vector dimensions:", len(embedding.data[0].embedding))
 ```
 
 ### Cursor IDE & VS Code (Continue / Cline)
