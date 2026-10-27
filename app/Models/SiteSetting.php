@@ -13,22 +13,28 @@ class SiteSetting extends Model
     protected $fillable = [
         'site_title',
         'version',
+        'show_demo_credentials',
         'logo_path',
         'logo_dark_path',
         'logo_light_path',
         'favicon_path',
     ];
 
+    protected $casts = [
+        'show_demo_credentials' => 'boolean',
+    ];
+
     /**
      * Default branding values used for fresh installs / fallbacks.
      *
-     * @return array<string, string>
+     * @return array<string, mixed>
      */
     public static function defaults(): array
     {
         return [
             'site_title' => 'Passwire',
             'version' => 'v1.0',
+            'show_demo_credentials' => true,
             'logo_path' => null,
             'logo_dark_path' => null,
             'logo_light_path' => null,

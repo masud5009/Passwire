@@ -89,5 +89,17 @@ class DashboardUiTest extends TestCase
         $resAlerts = $this->actingAs($admin)->get('/dashboard/alerts');
         $resAlerts->assertStatus(200);
         $resAlerts->assertSee('Real-Time Failover Alerts & Webhooks', false);
+
+        // 8. Profile Route
+        $resProfile = $this->actingAs($admin)->get('/dashboard/profile');
+        $resProfile->assertStatus(200);
+        $resProfile->assertSee('Edit Profile', false);
+        $resProfile->assertSee('Account Information', false);
+
+        // 9. Password Route
+        $resPassword = $this->actingAs($admin)->get('/dashboard/password');
+        $resPassword->assertStatus(200);
+        $resPassword->assertSee('Change Password', false);
+        $resPassword->assertSee('Sign-in Security Preferences', false);
     }
 }

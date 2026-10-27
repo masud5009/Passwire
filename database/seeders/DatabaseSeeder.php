@@ -104,5 +104,8 @@ class DatabaseSeeder extends Seeder
                 'is_active' => true,
             ]
         );
+
+        // 5. Default Model Pricings
+        $this->call(ModelPricingSeeder::class);
     }
 }

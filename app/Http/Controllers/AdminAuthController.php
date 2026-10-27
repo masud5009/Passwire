@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\SiteSetting;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -55,7 +56,7 @@ class AdminAuthController extends Controller
     }
 
     /**
-     * Update the authenticated admin's profile information and password.
+     * Update the authenticated admin's profile information.
      */
     public function updateProfile(Request $request): RedirectResponse
     {
@@ -64,20 +65,49 @@ class AdminAuthController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
-            'current_password' => ['nullable', 'required_with:password', 'current_password'],
-            'password' => ['nullable', 'string', 'min:8', 'confirmed'],
         ]);
 
         $user->name = $validated['name'];
         $user->email = $validated['email'];
-
-        if (!empty($validated['password'])) {
-            $user->password = Hash::make($validated['password']);
-        }
-
         $user->save();
 
         return back()->with('success', 'Admin profile updated successfully.');
+    }
+
+    /**
+     * Display the change password & security preferences page.
+     */
+    public function editPassword(Request $request): View
+    {
+        $user = $request->user();
+        $siteSetting = SiteSetting::getSettings();
+
+        return view('dashboard.password', compact('user', 'siteSetting'));
+    }
+
+    /**
+     * Update the admin's password and login security preferences.
+     */
+    public function updatePassword(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'current_password' => ['nullable', 'required_with:password', 'current_password'],
+            'password' => ['nullable', 'string', 'min:8', 'confirmed'],
+            'hide_demo_credentials' => ['nullable', 'boolean'],
+        ]);
+
+        if (!empty($validated['password'])) {
+            $user->password = Hash::make($validated['password']);
+            $user->save();
+        }
+
+        $siteSetting = SiteSetting::getSettings();
+        $siteSetting->show_demo_credentials = ! $request->boolean('hide_demo_credentials');
+        $siteSetting->save();
+
+        return back()->with('success', 'Password and security preferences updated successfully.');
     }
 
     /**

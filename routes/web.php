@@ -34,6 +34,9 @@ Route::middleware('auth')->prefix('dashboard')->name('dashboard.')->group(functi
     Route::get('/analytics/charts', [AdminDashboardController::class, 'chartAnalytics'])->name('analytics.charts');
     Route::get('/profile', [AdminAuthController::class, 'editProfile'])->name('profile');
     Route::put('/profile', [AdminAuthController::class, 'updateProfile'])->name('profile.update');
+    Route::get('/password', [AdminAuthController::class, 'editPassword'])->name('password');
+    Route::put('/password', [AdminAuthController::class, 'updatePassword'])->name('password.update');
+    Route::redirect('/change-password', '/dashboard/password');
 
     // Providers & Accounts
     Route::post('/providers', [AdminDashboardController::class, 'storeProvider'])->name('providers.store');

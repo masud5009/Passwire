@@ -154,6 +154,12 @@
     <div class="absolute -bottom-48 -right-48 w-96 h-96 bg-violet-600/10 rounded-full blur-[128px] pointer-events-none"></div>
     <div class="absolute inset-0 bg-[radial-gradient(#ffffff05_1px,transparent_1px)] [background-size:24px_24px] pointer-events-none"></div>
 
+    @php
+        $showDemo = env('PASSWIRE_SHOW_DEMO_CREDENTIALS') !== null
+            ? filter_var(env('PASSWIRE_SHOW_DEMO_CREDENTIALS'), FILTER_VALIDATE_BOOLEAN)
+            : ($globalSiteSettings->show_demo_credentials ?? true);
+    @endphp
+
     <div class="w-full max-w-md relative z-10">
 
         <!-- Brand Header -->
@@ -192,7 +198,7 @@
                             <i data-lucide="mail" class="w-4 h-4"></i>
                         </div>
                         <input type="email" id="email" name="email" value="{{ old('email') }}" autofocus
-                            placeholder="name@example.com"
+                            placeholder="{{ $showDemo ? 'admin@passwire.local' : 'name@example.com' }}"
                             class="w-full bg-[#09090b] border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-colors">
                     </div>
                     <p id="emailError" class="hidden mt-1.5 text-xs text-rose-400 flex items-center gap-1.5"></p>
@@ -227,6 +233,54 @@
                     <i data-lucide="arrow-right" class="w-4 h-4" style="color: #ffffff !important;"></i>
                 </button>
             </form>
+
+            @if ($showDemo)
+            <!-- Default Demo Credentials Card -->
+            <div class="mt-6 pt-5 border-t border-zinc-200 dark:border-white/[0.08]">
+                <div class="rounded-xl p-3.5 bg-emerald-500/[0.06] dark:bg-emerald-500/10 border border-emerald-500/20 text-xs">
+                    <div class="flex items-center justify-between gap-2 mb-2.5">
+                        <span class="font-semibold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5 text-xs">
+                            <i data-lucide="key-round" class="w-3.5 h-3.5"></i>
+                            <span>Default Credentials</span>
+                        </span>
+                        <button type="button" id="fillDemoBtn"
+                            class="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 bg-white dark:bg-emerald-500/20 hover:bg-zinc-50 dark:hover:bg-emerald-500/30 px-2 py-0.5 rounded-md border border-emerald-500/20 transition-all cursor-pointer shadow-2xs active:scale-95">
+                            <i data-lucide="sparkles" class="w-3 h-3 text-emerald-600 dark:text-emerald-400"></i>
+                            <span id="fillDemoText">Auto-fill</span>
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 font-mono text-[11px]">
+                        <!-- Email Pill -->
+                        <div role="button" tabindex="0" onclick="fillCredential('admin@passwire.local', null)"
+                            title="Click to copy & fill email"
+                            class="group/c cursor-pointer bg-white dark:bg-black/30 p-2 rounded-lg border border-zinc-200 dark:border-white/[0.06] hover:border-emerald-500/40 dark:hover:border-emerald-500/40 transition-all flex items-center justify-between gap-1 shadow-2xs">
+                            <div class="min-w-0 pr-1">
+                                <div class="text-[9px] uppercase font-sans text-zinc-500 dark:text-zinc-500 font-bold tracking-wider mb-0.5">Email</div>
+                                <div class="truncate select-all text-zinc-900 dark:text-zinc-200 font-medium">admin@passwire.local</div>
+                            </div>
+                            <i data-lucide="copy" class="w-3 h-3 text-zinc-400 group-hover/c:text-emerald-500 transition-colors flex-shrink-0"></i>
+                        </div>
+
+                        <!-- Password Pill -->
+                        <div role="button" tabindex="0" onclick="fillCredential(null, 'password')"
+                            title="Click to copy & fill password"
+                            class="group/c cursor-pointer bg-white dark:bg-black/30 p-2 rounded-lg border border-zinc-200 dark:border-white/[0.06] hover:border-emerald-500/40 dark:hover:border-emerald-500/40 transition-all flex items-center justify-between gap-1 shadow-2xs">
+                            <div class="min-w-0 pr-1">
+                                <div class="text-[9px] uppercase font-sans text-zinc-500 dark:text-zinc-500 font-bold tracking-wider mb-0.5">Password</div>
+                                <div class="select-all text-zinc-900 dark:text-zinc-200 font-medium">password</div>
+                            </div>
+                            <i data-lucide="copy" class="w-3 h-3 text-zinc-400 group-hover/c:text-emerald-500 transition-colors flex-shrink-0"></i>
+                        </div>
+                    </div>
+
+                    <p class="text-[11px] text-zinc-500 dark:text-zinc-400 mt-2 font-sans flex items-center gap-1.5">
+                        <i data-lucide="info" class="w-3 h-3 text-emerald-600 dark:text-emerald-400 flex-shrink-0"></i>
+                        <span>Pre-configured during setup. Click <b>Auto-fill</b> to quickly sign in.</span>
+                    </p>
+                </div>
+            </div>
+            @endif
         </div>
     </div>
 
@@ -301,6 +355,46 @@
         }
         form.submit();
     });
+
+    window.fillCredential = function(em, pw) {
+        if (em) {
+            email.value = em;
+            clearError(email, emailError);
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(em).catch(() => {});
+            }
+        }
+        if (pw) {
+            password.value = pw;
+            clearError(password, passwordError);
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(pw).catch(() => {});
+            }
+        }
+    };
+
+    const fillDemoBtn = document.getElementById('fillDemoBtn');
+    const fillDemoText = document.getElementById('fillDemoText');
+    if (fillDemoBtn) {
+        fillDemoBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            email.value = 'admin@passwire.local';
+            password.value = 'password';
+            clearError(email, emailError);
+            clearError(password, passwordError);
+            if (fillDemoText) {
+                const prev = fillDemoText.textContent;
+                fillDemoText.textContent = 'Filled!';
+                setTimeout(() => {
+                    fillDemoText.textContent = prev;
+                }, 1500);
+            }
+        });
+    }
+
+    if (window.lucide) {
+        lucide.createIcons();
+    }
 })();
 </script>
 </body>

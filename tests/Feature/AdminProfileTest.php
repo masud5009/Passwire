@@ -33,7 +33,7 @@ class AdminProfileTest extends TestCase
         $response->assertStatus(200);
         $response->assertSee('Edit Profile', false);
         $response->assertSee('Account Information', false);
-        $response->assertSee('Security & Password', false);
+        $response->assertSee('Change Password', false);
         $response->assertSee('Page Viewer Admin', false);
     }
 
@@ -76,6 +76,20 @@ class AdminProfileTest extends TestCase
         $response->assertSessionHasErrors('email');
     }
 
+    public function test_admin_can_view_change_password_page(): void
+    {
+        $admin = User::factory()->create([
+            'email' => 'viewer_' . uniqid() . '@passwire.local',
+        ]);
+
+        $response = $this->actingAs($admin)->get('/dashboard/password');
+
+        $response->assertStatus(200);
+        $response->assertSee('Change Password', false);
+        $response->assertSee('Current Password', false);
+        $response->assertSee('Sign-in Security Preferences', false);
+    }
+
     public function test_admin_can_update_password_with_valid_current_password(): void
     {
         $admin = User::factory()->create([
@@ -84,9 +98,7 @@ class AdminProfileTest extends TestCase
             'password' => Hash::make('old-password-123'),
         ]);
 
-        $response = $this->actingAs($admin)->put('/dashboard/profile', [
-            'name' => 'Password Changer',
-            'email' => 'changer@passwire.local',
+        $response = $this->actingAs($admin)->put('/dashboard/password', [
             'current_password' => 'old-password-123',
             'password' => 'new-secret-password',
             'password_confirmation' => 'new-secret-password',
@@ -107,9 +119,7 @@ class AdminProfileTest extends TestCase
             'password' => Hash::make('correct-password'),
         ]);
 
-        $response = $this->actingAs($admin)->put('/dashboard/profile', [
-            'name' => 'Wrong Password Tester',
-            'email' => 'wrong@passwire.local',
+        $response = $this->actingAs($admin)->put('/dashboard/password', [
             'current_password' => 'invalid-password',
             'password' => 'new-secret-password',
             'password_confirmation' => 'new-secret-password',
@@ -119,5 +129,46 @@ class AdminProfileTest extends TestCase
 
         $admin->refresh();
         $this->assertTrue(Hash::check('correct-password', $admin->password));
+    }
+
+    public function test_admin_can_toggle_hide_demo_credentials(): void
+    {
+        $admin = User::factory()->create([
+            'email' => 'toggle_' . uniqid() . '@passwire.local',
+        ]);
+
+        // 1. Hide default credentials
+        $response = $this->actingAs($admin)->put('/dashboard/password', [
+            'hide_demo_credentials' => '1',
+        ]);
+
+        $response->assertRedirect();
+        $this->assertDatabaseHas('site_settings', [
+            'show_demo_credentials' => false,
+        ]);
+
+        // Login page should now hide the demo badge
+        $this->post('/logout');
+        $loginRes = $this->get('/login');
+        $loginRes->assertStatus(200);
+        $loginRes->assertDontSee('Default Credentials', false);
+        $loginRes->assertDontSee('placeholder="admin@passwire.local"', false);
+
+        // 2. Unhide default credentials
+        $response = $this->actingAs($admin)->put('/dashboard/password', [
+            // hide_demo_credentials omitted = uncheck
+        ]);
+
+        $response->assertRedirect();
+        $this->assertDatabaseHas('site_settings', [
+            'show_demo_credentials' => true,
+        ]);
+
+        // Login page should now show the demo badge
+        $this->post('/logout');
+        $loginRes = $this->get('/login');
+        $loginRes->assertStatus(200);
+        $loginRes->assertSee('Default Credentials', false);
+        $loginRes->assertSee('placeholder="admin@passwire.local"', false);
     }
 }

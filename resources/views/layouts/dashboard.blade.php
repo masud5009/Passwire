@@ -236,6 +236,19 @@
                             <span>Edit Profile</span>
                         </div>
                     </a>
+
+                    <!-- 9. Change Password -->
+                    <a href="{{ route('dashboard.password') }}"
+                        @class([
+                            'w-full py-2 px-3 rounded-xl text-xs sm:text-sm flex items-center justify-between transition-all group',
+                            'bg-white/[0.08] text-white font-semibold' => request()->routeIs('dashboard.password', 'dashboard.password.*'),
+                            'text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.03]' => !request()->routeIs('dashboard.password', 'dashboard.password.*'),
+                        ])>
+                        <div class="flex items-center gap-2.5">
+                            <i data-lucide="key-round" class="w-4 h-4 transition-colors {{ request()->routeIs('dashboard.password', 'dashboard.password.*') ? 'text-emerald-400' : 'text-zinc-500 group-hover:text-zinc-300' }}"></i>
+                            <span>Change Password</span>
+                        </div>
+                    </a>
                 </nav>
             </div>
 
