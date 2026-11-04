@@ -117,20 +117,28 @@ class PasswireInstallCommand extends Command
 
         // 6. Master Gateway Key
         $masterKey = GatewayKey::where('is_active', true)
-            ->where('key', 'like', 'sk-pw-%')
+            ->where(function ($query) {
+                $query->where('key_prefix', 'like', 'sk-pw-%');
+            })
             ->latest()
             ->first() ?? GatewayKey::where('is_active', true)->latest()->first();
 
+        $keyForBanner = null;
+
         if (!$masterKey) {
+            $rawKey = GatewayKey::generateSecretKey();
             $masterKey = GatewayKey::create([
                 'name' => 'Default Master Key',
-                'key' => 'sk-pw-' . bin2hex(random_bytes(16)),
+                'key' => $rawKey,
                 'is_active' => true,
             ]);
+            $keyForBanner = $rawKey;
+        } else {
+            $keyForBanner = $masterKey->key;
         }
 
         // 7. Success Banner & Instructions
-        $this->displaySuccessSummary($adminEmail, $adminPassword, $masterKey->key);
+        $this->displaySuccessSummary($adminEmail, $adminPassword, $keyForBanner);
 
         return self::SUCCESS;
     }

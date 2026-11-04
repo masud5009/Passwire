@@ -13,6 +13,8 @@ Route::get('/', function () {
 // Authentication routes
 Route::get('/login', [AdminAuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AdminAuthController::class, 'login']);
+Route::get('/login/two-factor', [AdminAuthController::class, 'showTwoFactorChallenge'])->name('login.two-factor');
+Route::post('/login/two-factor', [AdminAuthController::class, 'verifyTwoFactorChallenge']);
 Route::post('/logout', [AdminAuthController::class, 'logout'])->name('logout');
 
 // Protected Dashboard routes
@@ -37,6 +39,12 @@ Route::middleware('auth')->prefix('dashboard')->name('dashboard.')->group(functi
     Route::get('/password', [AdminAuthController::class, 'editPassword'])->name('password');
     Route::put('/password', [AdminAuthController::class, 'updatePassword'])->name('password.update');
     Route::redirect('/change-password', '/dashboard/password');
+
+    // Two-Factor Authentication Management
+    Route::post('/two-factor/enable', [AdminAuthController::class, 'enableTwoFactor'])->name('two-factor.enable');
+    Route::post('/two-factor/confirm', [AdminAuthController::class, 'confirmTwoFactor'])->name('two-factor.confirm');
+    Route::delete('/two-factor/disable', [AdminAuthController::class, 'disableTwoFactor'])->name('two-factor.disable');
+    Route::post('/two-factor/recovery-codes', [AdminAuthController::class, 'regenerateRecoveryCodes'])->name('two-factor.recovery-codes');
 
     // Providers & Accounts
     Route::post('/providers', [AdminDashboardController::class, 'storeProvider'])->name('providers.store');
@@ -67,6 +75,7 @@ Route::middleware('auth')->prefix('dashboard')->name('dashboard.')->group(functi
 
     // Logs, Cache & Playground
     Route::post('/logs/clear', [AdminDashboardController::class, 'clearLogs'])->name('logs.clear');
+    Route::post('/logs/prune', [AdminDashboardController::class, 'pruneLogs'])->name('logs.prune');
     Route::post('/cache/purge', [AdminDashboardController::class, 'purgeCache'])->name('cache.purge');
     Route::post('/playground/chat', [AdminDashboardController::class, 'playgroundChat'])->name('playground.chat');
 });

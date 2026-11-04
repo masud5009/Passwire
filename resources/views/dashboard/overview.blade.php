@@ -358,14 +358,14 @@
                 <div x-show="intTab === 'cursor'" class="bg-[#09090b] rounded-xl p-3.5 border border-white/5 text-xs font-mono space-y-2 text-zinc-300">
                     <div class="text-zinc-500">// Cursor IDE -> Settings -> Models:</div>
                     <div><span class="text-emerald-400">Base URL:</span> {{ url('/v1') }}</div>
-                    <div><span class="text-emerald-400">API Key:</span> {{ $gatewayKeys->first()?->key ?? 'sk-pw-master-key-...' }}</div>
+                    <div><span class="text-emerald-400">API Key:</span> {{ $gatewayKeys->first()?->key_prefix ?? 'sk-pw-...' }}</div>
                     <div><span class="text-emerald-400">Model:</span> auto</div>
                 </div>
 
                 <div x-show="intTab === 'python'" class="bg-[#09090b] rounded-xl p-3.5 border border-white/5 text-xs font-mono text-zinc-300 overflow-x-auto" x-cloak>
 <pre>client = OpenAI(
   base_url="{{ url('/v1') }}",
-  api_key="{{ $gatewayKeys->first()?->key ?? 'sk-pw-...' }}"
+  api_key="{{ $gatewayKeys->first()?->key_prefix ?? 'sk-pw-...' }}"
 )
 res = client.chat.completions.create(
   model="auto",
@@ -378,7 +378,7 @@ res = client.chat.completions.create(
 
 const client = new OpenAI({
   baseURL: '{{ url('/v1') }}',
-  apiKey: '{{ $gatewayKeys->first()?->key ?? 'sk-pw-...' }}',
+  apiKey: '{{ $gatewayKeys->first()?->key_prefix ?? 'sk-pw-...' }}',
 });
 const res = await client.chat.completions.create({
   model: 'auto',
@@ -388,7 +388,7 @@ const res = await client.chat.completions.create({
 
                 <div x-show="intTab === 'curl'" class="bg-[#09090b] rounded-xl p-3.5 border border-white/5 text-xs font-mono text-zinc-300 overflow-x-auto" x-cloak>
 <pre>curl {{ url('/v1/chat/completions') }} \
- -H "Authorization: Bearer {{ $gatewayKeys->first()?->key ?? 'sk-pw-...' }}" \
+ -H "Authorization: Bearer {{ $gatewayKeys->first()?->key_prefix ?? 'sk-pw-...' }}" \
  -d '{"model":"auto","messages":[{"role":"user","content":"Hi"}]}'</pre>
                 </div>
             </div>

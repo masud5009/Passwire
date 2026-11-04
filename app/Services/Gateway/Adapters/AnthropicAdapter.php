@@ -445,6 +445,12 @@ class AnthropicAdapter implements ProviderAdapterInterface
                     ],
                 ];
 
+                if (isset($data['usage']['output_tokens'])) {
+                    $chunk['usage'] = [
+                        'completion_tokens' => (int) $data['usage']['output_tokens'],
+                    ];
+                }
+
                 return 'data: ' . json_encode($chunk, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "\n\n";
             }
         }

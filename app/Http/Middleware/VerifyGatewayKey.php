@@ -49,10 +49,10 @@ class VerifyGatewayKey
             $key = trim($request->header('x-api-key') ?? '');
         }
 
-        // 3. Look up active GatewayKey
+        // 3. Look up active GatewayKey via SHA-256 hash
         $gatewayKey = null;
         if (!empty($key)) {
-            $gatewayKey = GatewayKey::where('key', $key)
+            $gatewayKey = GatewayKey::where('key_hash', hash('sha256', $key))
                 ->where('is_active', true)
                 ->first();
         }
@@ -73,23 +73,27 @@ class VerifyGatewayKey
             $gatewayKey->tokens_used_today = 0;
             $gatewayKey->usage_reset_date = $today;
             $gatewayKey->save();
+            \Illuminate\Support\Facades\Cache::forget(\App\Http\Middleware\EnforceGatewayRateLimits::getDailyCacheKey($gatewayKey, $today));
         }
 
-        // 5. Check daily token limit
-        if ($gatewayKey->daily_token_limit !== null && $gatewayKey->tokens_used_today >= $gatewayKey->daily_token_limit) {
-            app(\App\Services\Notification\AlertNotificationService::class)->notifyGatewayKeyLimitExceeded(
-                $gatewayKey->name,
-                'Daily Token Quota',
-                "Consumed {$gatewayKey->tokens_used_today} / {$gatewayKey->daily_token_limit} tokens today."
-            );
+        // 5. Check daily token limit (synchronized against real-time cache counter)
+        if ($gatewayKey->daily_token_limit !== null) {
+            $dailyUsage = \App\Http\Middleware\EnforceGatewayRateLimits::getDailyUsage($gatewayKey);
+            if ($dailyUsage >= $gatewayKey->daily_token_limit) {
+                app(\App\Services\Notification\AlertNotificationService::class)->notifyGatewayKeyLimitExceeded(
+                    $gatewayKey->name,
+                    'Daily Token Quota',
+                    "Consumed {$dailyUsage} / {$gatewayKey->daily_token_limit} tokens today."
+                );
 
-            return response()->json([
-                'error' => [
-                    'message' => 'Daily token limit exceeded for this Gateway key.',
-                    'type' => 'insufficient_quota',
-                    'code' => 'daily_limit_exceeded',
-                ],
-            ], 429, $this->corsHeaders);
+                return response()->json([
+                    'error' => [
+                        'message' => 'Daily token limit exceeded for this Gateway key.',
+                        'type' => 'insufficient_quota',
+                        'code' => 'daily_limit_exceeded',
+                    ],
+                ], 429, $this->corsHeaders);
+            }
         }
 
         // 6. Update last_used_at and bind to request attributes

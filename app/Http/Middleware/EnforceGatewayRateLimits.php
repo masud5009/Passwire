@@ -118,7 +118,7 @@ class EnforceGatewayRateLimits
     }
 
     /**
-     * Atomically record tokens consumed by a gateway key within the current 60-second window.
+     * Atomically record tokens consumed by a gateway key within the current 60-second window (TPM).
      */
     public static function recordTokenUsage(GatewayKey $gatewayKey, int $tokens): void
     {
@@ -129,10 +129,164 @@ class EnforceGatewayRateLimits
         $window = (int) floor(time() / 60);
         $tpmKey = "gateway_key_tpm:{$gatewayKey->id}:{$window}";
 
-        if (!Cache::has($tpmKey)) {
-            Cache::put($tpmKey, $tokens, 120);
+        // Cache::add is atomic: returns true only if the key was missing and inserted.
+        // If false, the key already exists, so we increment atomically.
+        if (Cache::add($tpmKey, $tokens, 120)) {
+            return;
+        }
+
+        Cache::increment($tpmKey, $tokens);
+    }
+
+    /**
+     * Get the cache key for daily token consumption tracking.
+     */
+    public static function getDailyCacheKey(GatewayKey $gatewayKey, ?string $date = null): string
+    {
+        $date = $date ?? now()->toDateString();
+        return "gateway_key_daily_tokens:{$gatewayKey->id}:{$date}";
+    }
+
+    /**
+     * Get real-time daily token usage, synchronized between cache and database.
+     */
+    public static function getDailyUsage(GatewayKey $gatewayKey): int
+    {
+        $today = now()->toDateString();
+        $cacheKey = self::getDailyCacheKey($gatewayKey, $today);
+        $dbUsage = (int) ($gatewayKey->tokens_used_today ?? 0);
+
+        // Atomically initialize cache key if it does not exist yet
+        Cache::add($cacheKey, $dbUsage, 86400 * 2);
+
+        return (int) Cache::get($cacheKey, $dbUsage);
+    }
+
+    /**
+     * Estimate token requirement for an incoming chat completion request.
+     */
+    public static function estimateRequiredTokens(array $payload, ?GatewayKey $gatewayKey = null): int
+    {
+        $tokenizer = app(\App\Services\Gateway\TokenizerService::class);
+        $promptTokens = $tokenizer->estimatePromptTokens($payload);
+
+        $requestedMax = null;
+        if (isset($payload['max_tokens']) && is_numeric($payload['max_tokens'])) {
+            $requestedMax = (int) $payload['max_tokens'];
+        } elseif (isset($payload['max_completion_tokens']) && is_numeric($payload['max_completion_tokens'])) {
+            $requestedMax = (int) $payload['max_completion_tokens'];
+        }
+
+        if ($requestedMax !== null) {
+            $completionEstimate = min($requestedMax, 1000);
         } else {
-            Cache::increment($tpmKey, $tokens);
+            $remaining = 500;
+            if ($gatewayKey && $gatewayKey->daily_token_limit !== null) {
+                $currentUsage = self::getDailyUsage($gatewayKey);
+                $remainingQuota = $gatewayKey->daily_token_limit - $currentUsage;
+                if ($remainingQuota > $promptTokens) {
+                    $remaining = min(500, max(50, $remainingQuota - $promptTokens));
+                }
+            }
+            $completionEstimate = $remaining;
+        }
+
+        return max(1, $promptTokens + $completionEstimate);
+    }
+
+    /**
+     * Estimate token requirement for an incoming embeddings request.
+     */
+    public static function estimateEmbeddingTokens(array $payload, ?GatewayKey $gatewayKey = null): int
+    {
+        $input = $payload['input'] ?? '';
+        $chars = 0;
+        if (is_string($input)) {
+            $chars = strlen($input);
+        } elseif (is_array($input)) {
+            foreach ($input as $item) {
+                $chars += strlen((string) $item);
+            }
+        }
+        return max(1, (int) ceil($chars / 4));
+    }
+
+    /**
+     * Atomically pre-reserve daily tokens in cache to prevent concurrent overshooting of daily quota.
+     *
+     * @return bool True if reservation succeeded within limit, false if quota exceeded
+     */
+    public static function reserveDailyTokens(GatewayKey $gatewayKey, int $estimatedTokens): bool
+    {
+        if ($gatewayKey->daily_token_limit === null || $gatewayKey->daily_token_limit <= 0) {
+            return true;
+        }
+
+        if ($estimatedTokens <= 0) {
+            $estimatedTokens = 1;
+        }
+
+        $today = now()->toDateString();
+        $cacheKey = self::getDailyCacheKey($gatewayKey, $today);
+        $dbUsage = (int) ($gatewayKey->tokens_used_today ?? 0);
+
+        // Atomically initialize cache key with DB usage if missing
+        Cache::add($cacheKey, $dbUsage, 86400 * 2);
+
+        // Atomically increment the daily token consumption counter
+        $newUsage = Cache::increment($cacheKey, $estimatedTokens);
+
+        // If limit is exceeded by this reservation, rollback immediately
+        if ($newUsage > $gatewayKey->daily_token_limit) {
+            Cache::decrement($cacheKey, $estimatedTokens);
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Settle actual tokens consumed: adjust reservation difference in cache and update DB.
+     */
+    public static function settleDailyTokens(GatewayKey $gatewayKey, int $reservedTokens, int $actualTokens): void
+    {
+        $today = now()->toDateString();
+        $cacheKey = self::getDailyCacheKey($gatewayKey, $today);
+
+        // Settle the difference in the cache counter
+        $diff = $actualTokens - $reservedTokens;
+        if ($diff > 0) {
+            Cache::increment($cacheKey, $diff);
+        } elseif ($diff < 0) {
+            $val = Cache::decrement($cacheKey, abs($diff));
+            if ($val < 0) {
+                Cache::put($cacheKey, max(0, (int) $gatewayKey->tokens_used_today + $actualTokens), 86400 * 2);
+            }
+        }
+
+        // Increment database daily usage
+        $gatewayKey->increment('tokens_used_today', $actualTokens);
+        $gatewayKey->update(['last_used_at' => now()]);
+
+        // Record for TPM
+        self::recordTokenUsage($gatewayKey, $actualTokens);
+    }
+
+    /**
+     * Rollback reserved daily tokens in cache if request fails or is aborted.
+     */
+    public static function rollbackDailyTokens(GatewayKey $gatewayKey, int $reservedTokens): void
+    {
+        if ($reservedTokens <= 0) {
+            return;
+        }
+
+        $today = now()->toDateString();
+        $cacheKey = self::getDailyCacheKey($gatewayKey, $today);
+
+        $val = Cache::decrement($cacheKey, $reservedTokens);
+        if ($val < 0) {
+            Cache::put($cacheKey, max(0, (int) $gatewayKey->tokens_used_today), 86400 * 2);
         }
     }
 

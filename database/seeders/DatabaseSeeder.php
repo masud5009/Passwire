@@ -97,10 +97,12 @@ class DatabaseSeeder extends Seeder
         }
 
         // 4. Default Gateway Key
+        $defaultMasterKey = 'sk-pw-master-key-1234567890abcdef';
         GatewayKey::updateOrCreate(
-            ['key' => 'sk-pw-master-key-1234567890abcdef'],
+            ['key_hash' => GatewayKey::hashKey($defaultMasterKey)],
             [
                 'name' => 'Default Master Key',
+                'key_prefix' => GatewayKey::formatPrefix($defaultMasterKey),
                 'is_active' => true,
             ]
         );

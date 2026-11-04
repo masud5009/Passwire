@@ -12,7 +12,9 @@ use App\Services\Gateway\FormatTranslator;
 use App\Services\Gateway\OmniRouterService;
 use App\Services\Gateway\PromptCompressor;
 use App\Services\Gateway\ResponseCacheService;
+use App\Services\Gateway\TokenizerService;
 use App\Services\Notification\AlertNotificationService;
+use App\Services\Security\SsrfProtectionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -22,6 +24,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 class GatewayController extends Controller
 {
     protected AlertNotificationService $alertService;
+    protected TokenizerService $tokenizer;
+    protected SsrfProtectionService $ssrf;
 
     /**
      * Create a new GatewayController instance.
@@ -32,9 +36,13 @@ class GatewayController extends Controller
         protected FormatTranslator $translator,
         protected ResponseCacheService $cacheService,
         protected CostCalculatorService $costCalculator,
-        ?AlertNotificationService $alertService = null
+        ?AlertNotificationService $alertService = null,
+        ?TokenizerService $tokenizer = null,
+        ?SsrfProtectionService $ssrf = null
     ) {
         $this->alertService = $alertService ?? new AlertNotificationService();
+        $this->tokenizer = $tokenizer ?? new TokenizerService();
+        $this->ssrf = $ssrf ?? new SsrfProtectionService();
     }
 
     /**
@@ -98,9 +106,27 @@ class GatewayController extends Controller
      */
     public function chatCompletions(Request $request): JsonResponse|StreamedResponse
     {
+        // 1. Enforce request body size limit (10MB default)
+        $maxSizeBytes = (int) config('gateway.max_request_size_bytes', 10 * 1024 * 1024);
+        $contentLength = (int) $request->header('Content-Length', 0);
+        if ($contentLength > $maxSizeBytes || strlen($request->getContent()) > $maxSizeBytes) {
+            return response()->json([
+                'error' => [
+                    'message' => 'Request payload exceeds the maximum allowed size of 10MB.',
+                    'type' => 'invalid_request_error',
+                    'code' => 'payload_too_large',
+                ],
+            ], 413);
+        }
+
+        $maxCeiling = (int) config('gateway.max_tokens_ceiling', 16384);
+        $maxMessages = (int) config('gateway.max_messages_count', 500);
+
         $validator = Validator::make($request->all(), [
             'model' => 'required|string',
-            'messages' => 'required|array|min:1',
+            'messages' => "required|array|min:1|max:{$maxMessages}",
+            'max_tokens' => "nullable|integer|min:1|max:{$maxCeiling}",
+            'max_completion_tokens' => "nullable|integer|min:1|max:{$maxCeiling}",
         ]);
 
         if ($validator->fails()) {
@@ -117,14 +143,36 @@ class GatewayController extends Controller
         $gatewayKey = $request->attributes->get('gateway_key');
         $payload = $request->all();
 
+        // 2. Daily token quota pre-reservation (prevents concurrency race conditions)
+        $reservedTokens = 0;
+        if ($gatewayKey && $gatewayKey->daily_token_limit !== null) {
+            $estimatedTokens = \App\Http\Middleware\EnforceGatewayRateLimits::estimateRequiredTokens($payload, $gatewayKey);
+            if (!\App\Http\Middleware\EnforceGatewayRateLimits::reserveDailyTokens($gatewayKey, $estimatedTokens)) {
+                app(\App\Services\Notification\AlertNotificationService::class)->notifyGatewayKeyLimitExceeded(
+                    $gatewayKey->name,
+                    'Daily Token Quota',
+                    "Daily token limit of " . number_format($gatewayKey->daily_token_limit) . " exceeded."
+                );
+
+                return response()->json([
+                    'error' => [
+                        'message' => 'Daily token limit exceeded for this Gateway key.',
+                        'type' => 'insufficient_quota',
+                        'code' => 'daily_limit_exceeded',
+                    ],
+                ], 429);
+            }
+            $reservedTokens = $estimatedTokens;
+        }
+
         // If client requested SSE streaming
         if ($request->boolean('stream')) {
-            return $this->streamCompletions($payload, $gatewayKey);
+            return $this->streamCompletions($payload, $gatewayKey, $reservedTokens);
         }
 
         // Synchronous dispatch
         try {
-            $result = $this->router->dispatchSync($payload, $gatewayKey);
+            $result = $this->router->dispatchSync($payload, $gatewayKey, $reservedTokens);
 
             return response()->json($result['response'], 200, [
                 // Passwire Gateway Standard Headers
@@ -149,6 +197,10 @@ class GatewayController extends Controller
                 'X-OmniRoute-Latency-Ms' => (string) ($result['meta']['latency_ms'] ?? 0),
             ]);
         } catch (\Throwable $e) {
+            if ($gatewayKey && $reservedTokens > 0) {
+                \App\Http\Middleware\EnforceGatewayRateLimits::rollbackDailyTokens($gatewayKey, $reservedTokens);
+            }
+
             return response()->json([
                 'error' => [
                     'message' => $e->getMessage(),
@@ -164,6 +216,19 @@ class GatewayController extends Controller
      */
     public function embeddings(Request $request): JsonResponse
     {
+        // 1. Enforce request body size limit (10MB default)
+        $maxSizeBytes = (int) config('gateway.max_request_size_bytes', 10 * 1024 * 1024);
+        $contentLength = (int) $request->header('Content-Length', 0);
+        if ($contentLength > $maxSizeBytes || strlen($request->getContent()) > $maxSizeBytes) {
+            return response()->json([
+                'error' => [
+                    'message' => 'Request payload exceeds the maximum allowed size of 10MB.',
+                    'type' => 'invalid_request_error',
+                    'code' => 'payload_too_large',
+                ],
+            ], 413);
+        }
+
         /** @var GatewayKey|null $gatewayKey */
         $gatewayKey = $request->attributes->get('gateway_key');
         $payload = $request->all();
@@ -178,8 +243,23 @@ class GatewayController extends Controller
             ], 400);
         }
 
+        $reservedTokens = 0;
+        if ($gatewayKey && $gatewayKey->daily_token_limit !== null) {
+            $estimatedTokens = \App\Http\Middleware\EnforceGatewayRateLimits::estimateEmbeddingTokens($payload, $gatewayKey);
+            if (!\App\Http\Middleware\EnforceGatewayRateLimits::reserveDailyTokens($gatewayKey, $estimatedTokens)) {
+                return response()->json([
+                    'error' => [
+                        'message' => 'Daily token limit exceeded for this Gateway key.',
+                        'type' => 'insufficient_quota',
+                        'code' => 'daily_limit_exceeded',
+                    ],
+                ], 429);
+            }
+            $reservedTokens = $estimatedTokens;
+        }
+
         try {
-            $result = $this->router->dispatchEmbeddingSync($payload, $gatewayKey);
+            $result = $this->router->dispatchEmbeddingSync($payload, $gatewayKey, $reservedTokens);
 
             return response()->json($result['response'], 200, [
                 'X-Passwire-Provider' => $result['meta']['provider'] ?? '',
@@ -196,6 +276,10 @@ class GatewayController extends Controller
                 'X-OmniRoute-Latency-Ms' => (string) ($result['meta']['latency_ms'] ?? 0),
             ]);
         } catch (\Throwable $e) {
+            if ($gatewayKey && $reservedTokens > 0) {
+                \App\Http\Middleware\EnforceGatewayRateLimits::rollbackDailyTokens($gatewayKey, $reservedTokens);
+            }
+
             return response()->json([
                 'error' => [
                     'message' => $e->getMessage(),
@@ -209,70 +293,123 @@ class GatewayController extends Controller
     /**
      * Stream completions using shared-hosting compatible SSE via native cURL.
      */
-    public function streamCompletions(array $payload, ?GatewayKey $gatewayKey): StreamedResponse
+    public function streamCompletions(array $payload, ?GatewayKey $gatewayKey, int $reservedTokens = 0): StreamedResponse
     {
-        return new StreamedResponse(function () use ($payload, $gatewayKey) {
+        return new StreamedResponse(function () use ($payload, $gatewayKey, $reservedTokens) {
             // Disable all PHP output buffering for shared hosting compatibility
             @ini_set('output_buffering', 'off');
             @ini_set('zlib.output_compression', 'Off');
             @set_time_limit(0);
 
-            while (ob_get_level() > 0) {
-                @ob_end_flush();
+            if (!app()->runningUnitTests()) {
+                while (ob_get_level() > 0) {
+                    @ob_end_flush();
+                }
             }
             @ob_implicit_flush(true);
 
             $streamStartTime = microtime(true);
             $requestedModel = $payload['model'] ?? 'auto';
 
-            // 1. Check Response Cache for instantaneous SSE replay
+            // 1. Resolve target sequence and compression modes
+            $resolved = $this->router->resolveTargets($requestedModel);
+            $targets = $resolved['targets'];
+            $compressionModes = $resolved['compression_modes'] ?? ['dedup', 'lite'];
+
+            // 2. Compress prompts & apply PII redaction guardrails
+            $savedTokens = 0;
+            $redactedPiiCount = 0;
+            if (!empty($payload['messages']) && is_array($payload['messages'])) {
+                $compressed = $this->compressor->compress($payload['messages'], $compressionModes);
+                $payload['messages'] = $compressed['messages'];
+                $savedTokens = $compressed['saved_tokens'];
+                $redactedPiiCount = $compressed['redacted_pii_count'] ?? 0;
+            }
+
+            // 3. Check Response Cache for instantaneous SSE replay (matches sync post-compression key)
             $isCacheable = $this->cacheService->isCacheable($payload);
-            $cacheKey = $isCacheable ? $this->cacheService->generateKey($payload) : null;
+            $cacheKey = $isCacheable ? $this->cacheService->generateKey($payload, $gatewayKey) : null;
 
             if ($cacheKey) {
                 $cachedEntry = $this->cacheService->get($cacheKey);
                 if ($cachedEntry !== null) {
                     $cachedResponse = $cachedEntry['response'] ?? [];
                     $cachedMeta = $cachedEntry['meta'] ?? [];
-                    $cachedContent = $cachedResponse['choices'][0]['message']['content'] ?? '';
+                    $cachedChoice = $cachedResponse['choices'][0] ?? [];
+                    $cachedMessage = $cachedChoice['message'] ?? [];
+                    $cachedContent = $cachedMessage['content'] ?? null;
+                    $cachedToolCalls = $cachedMessage['tool_calls'] ?? null;
+                    $finishReason = $cachedChoice['finish_reason'] ?? (!empty($cachedToolCalls) ? 'tool_calls' : 'stop');
 
                     $chunkId = 'chatcmpl-cache-' . bin2hex(random_bytes(6));
                     $created = time();
 
-                    // Emit cached content chunk
-                    $sseChunk = [
-                        'id' => $chunkId,
-                        'object' => 'chat.completion.chunk',
-                        'created' => $created,
-                        'model' => $requestedModel,
-                        'choices' => [
-                            [
-                                'index' => 0,
-                                'delta' => [
-                                    'role' => 'assistant',
-                                    'content' => $cachedContent,
-                                ],
-                                'finish_reason' => null,
-                            ]
-                        ],
-                    ];
-                    echo "data: " . json_encode($sseChunk, JSON_UNESCAPED_UNICODE) . "\n\n";
+                    // Emit cached content chunk if content is present
+                    if ($cachedContent !== null && $cachedContent !== '') {
+                        $sseChunk = [
+                            'id' => $chunkId,
+                            'object' => 'chat.completion.chunk',
+                            'created' => $created,
+                            'model' => $cachedMeta['model'] ?? $requestedModel,
+                            'choices' => [
+                                [
+                                    'index' => 0,
+                                    'delta' => [
+                                        'role' => 'assistant',
+                                        'content' => $cachedContent,
+                                    ],
+                                    'finish_reason' => null,
+                                ]
+                            ],
+                        ];
+                        echo 'data: ' . json_encode($sseChunk, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "\n\n";
+                    }
 
-                    // Emit finish chunk
+                    // Emit cached tool calls chunk if tool calls are present
+                    if (!empty($cachedToolCalls) && is_array($cachedToolCalls)) {
+                        $sseToolChunk = [
+                            'id' => $chunkId,
+                            'object' => 'chat.completion.chunk',
+                            'created' => $created,
+                            'model' => $cachedMeta['model'] ?? $requestedModel,
+                            'choices' => [
+                                [
+                                    'index' => 0,
+                                    'delta' => [
+                                        'role' => 'assistant',
+                                        'tool_calls' => $cachedToolCalls,
+                                    ],
+                                    'finish_reason' => null,
+                                ]
+                            ],
+                        ];
+                        echo 'data: ' . json_encode($sseToolChunk, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "\n\n";
+                    }
+
+                    // Emit finish chunk with real finish_reason ('stop' or 'tool_calls')
                     $sseFinish = [
                         'id' => $chunkId,
                         'object' => 'chat.completion.chunk',
                         'created' => $created,
-                        'model' => $requestedModel,
+                        'model' => $cachedMeta['model'] ?? $requestedModel,
                         'choices' => [
                             [
                                 'index' => 0,
-                                'delta' => new \stdClass(),
-                                'finish_reason' => 'stop',
+                                'delta' => (object) [],
+                                'finish_reason' => $finishReason,
                             ]
                         ],
                     ];
-                    echo "data: " . json_encode($sseFinish, JSON_UNESCAPED_UNICODE) . "\n\n";
+                    echo 'data: ' . json_encode($sseFinish, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "\n\n";
+
+                    // Emit usage chunk if client requested stream_options.include_usage
+                    if (!empty($payload['stream_options']['include_usage'])) {
+                        $pTokens = (int) ($cachedResponse['usage']['prompt_tokens'] ?? 0);
+                        $cTokens = (int) ($cachedResponse['usage']['completion_tokens'] ?? 0);
+                        $tTokens = (int) ($cachedResponse['usage']['total_tokens'] ?? ($pTokens + $cTokens));
+                        echo $this->tokenizer->formatStreamUsageChunk($cachedMeta['model'] ?? $requestedModel, $pTokens, $cTokens, $tTokens);
+                    }
+
                     echo "data: [DONE]\n\n";
                     if (ob_get_level() > 0) @ob_flush();
                     @flush();
@@ -290,7 +427,8 @@ class GatewayController extends Controller
                         true
                     );
 
-                    GatewayLog::create([
+                    // Record cached streaming log entry asynchronously via queue
+                    GatewayLog::record([
                         'gateway_key_id' => $gatewayKey?->id,
                         'requested_model' => $requestedModel,
                         'routed_provider' => $cachedMeta['provider'] ?? 'cache',
@@ -305,25 +443,16 @@ class GatewayController extends Controller
                         'latency_ms' => $latencyMs,
                         'status_code' => 200,
                         'is_cached' => true,
+                        'redacted_pii_count' => $redactedPiiCount,
                         'error_message' => null,
                     ]);
 
+                    if ($gatewayKey && $reservedTokens > 0) {
+                        \App\Http\Middleware\EnforceGatewayRateLimits::settleDailyTokens($gatewayKey, $reservedTokens, 0);
+                    }
+
                     return;
                 }
-            }
-
-            // Resolve target sequence and compression modes
-            $resolved = $this->router->resolveTargets($requestedModel);
-            $targets = $resolved['targets'];
-            $compressionModes = $resolved['compression_modes'] ?? ['dedup', 'lite'];
-
-            $savedTokens = 0;
-            $redactedPiiCount = 0;
-            if (!empty($payload['messages']) && is_array($payload['messages'])) {
-                $compressed = $this->compressor->compress($payload['messages'], $compressionModes);
-                $payload['messages'] = $compressed['messages'];
-                $savedTokens = $compressed['saved_tokens'];
-                $redactedPiiCount = $compressed['redacted_pii_count'] ?? 0;
             }
 
             $attemptErrors = [];
@@ -366,10 +495,17 @@ class GatewayController extends Controller
                     $targetPayload['model'] = $modelName;
                     $targetPayload['stream'] = true;
 
+                    // Request upstream provider usage chunk (stream_options.include_usage)
+                    if (!isset($targetPayload['stream_options']) || !is_array($targetPayload['stream_options'])) {
+                        $targetPayload['stream_options'] = [];
+                    }
+                    $targetPayload['stream_options']['include_usage'] = true;
+
                     $format = $provider->format ?? 'openai';
                     $adapter = $this->translator->getAdapter($format);
 
                     $url = $adapter->buildUrl($provider->base_url, $modelName, true, $account->api_key);
+                    $this->ssrf->assertSafeUrl($url);
                     $curlHeaders = $adapter->formatCurlHeaders($account->api_key, true);
                     $bodyJson = json_encode($adapter->formatPayload($modelName, $targetPayload));
 
@@ -380,7 +516,8 @@ class GatewayController extends Controller
                     curl_setopt($ch, CURLOPT_HTTPHEADER, $curlHeaders);
                     curl_setopt($ch, CURLOPT_TIMEOUT, 180);
                     curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
-                    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+                    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
 
                     $httpStatusCode = 0;
                     $errorBuffer = '';
@@ -388,6 +525,15 @@ class GatewayController extends Controller
                     $sseBuffer = '';
                     $streamedChunksCount = 0;
                     $accumulatedResponseText = '';
+                    $accumulatedToolCalls = [];
+                    $streamFinishReason = null;
+                    $usageFromStream = [
+                        'prompt_tokens' => null,
+                        'completion_tokens' => null,
+                        'total_tokens' => null,
+                    ];
+                    $clientRequestedUsage = !empty($payload['stream_options']['include_usage']);
+                    $usageChunkEmittedToClient = false;
 
                     // Inspect HTTP headers as they arrive
                     curl_setopt($ch, CURLOPT_HEADERFUNCTION, function ($ch, $headerLine) use (&$httpStatusCode) {
@@ -405,6 +551,10 @@ class GatewayController extends Controller
                         &$sseBuffer,
                         &$streamedChunksCount,
                         &$accumulatedResponseText,
+                        &$accumulatedToolCalls,
+                        &$streamFinishReason,
+                        &$usageFromStream,
+                        &$usageChunkEmittedToClient,
                         $format,
                         $adapter,
                         $modelName
@@ -420,13 +570,21 @@ class GatewayController extends Controller
                         if ($format === 'openai') {
                             echo $chunk;
                             $streamedChunksCount++;
-                            if (str_starts_with(trim($chunk), 'data: ') && !str_contains($chunk, '[DONE]')) {
-                                $cleanLine = trim(substr(trim($chunk), 6));
-                                $chunkData = json_decode($cleanLine, true);
-                                if (isset($chunkData['choices'][0]['delta']['content'])) {
-                                    $accumulatedResponseText .= $chunkData['choices'][0]['delta']['content'];
-                                }
+
+                            // Parse SSE lines inside the chunk to track text, tool calls, and provider usage chunks
+                            $lines = explode("\n", $chunk);
+                            foreach ($lines as $line) {
+                                $this->tokenizer->parseStreamChunk(
+                                    $line,
+                                    'openai',
+                                    $usageFromStream,
+                                    $accumulatedResponseText,
+                                    $usageChunkEmittedToClient,
+                                    $accumulatedToolCalls,
+                                    $streamFinishReason
+                                );
                             }
+
                             if (ob_get_level() > 0) @ob_flush();
                             @flush();
                         } else {
@@ -436,14 +594,20 @@ class GatewayController extends Controller
                                 $line = substr($sseBuffer, 0, $pos);
                                 $sseBuffer = substr($sseBuffer, $pos + 1);
 
+                                $this->tokenizer->parseStreamChunk(
+                                    $line,
+                                    $format,
+                                    $usageFromStream,
+                                    $accumulatedResponseText,
+                                    $usageChunkEmittedToClient,
+                                    $accumulatedToolCalls,
+                                    $streamFinishReason
+                                );
+
                                 $translated = $adapter->transformStreamChunk($line, $modelName);
                                 if ($translated !== null) {
                                     echo $translated;
                                     $streamedChunksCount++;
-                                    if (str_starts_with($translated, 'data: ') && !str_contains($translated, '[DONE]')) {
-                                        $chunkData = json_decode(substr(trim($translated), 6), true);
-                                        $accumulatedResponseText .= ($chunkData['choices'][0]['delta']['content'] ?? '');
-                                    }
                                     if (ob_get_level() > 0) @ob_flush();
                                     @flush();
                                 }
@@ -460,6 +624,16 @@ class GatewayController extends Controller
 
                     // Flush any leftover buffer for non-OpenAI streams
                     if ($format !== 'openai' && $streamStartedForThisAttempt && trim($sseBuffer) !== '') {
+                        $this->tokenizer->parseStreamChunk(
+                            $sseBuffer,
+                            $format,
+                            $usageFromStream,
+                            $accumulatedResponseText,
+                            $usageChunkEmittedToClient,
+                            $accumulatedToolCalls,
+                            $streamFinishReason
+                        );
+
                         $translated = $adapter->transformStreamChunk($sseBuffer, $modelName);
                         if ($translated !== null) {
                             echo $translated;
@@ -474,33 +648,55 @@ class GatewayController extends Controller
                     if ($streamStartedForThisAttempt) {
                         $streamSuccess = true;
 
+                        // Resolve accurate token counts (provider-reported or tokenizer estimation)
+                        $resolvedTokens = $this->tokenizer->resolveStreamTokens(
+                            $usageFromStream,
+                            $targetPayload,
+                            $accumulatedResponseText,
+                            $accumulatedToolCalls
+                        );
+
+                        $promptTokens = $resolvedTokens['prompt_tokens'];
+                        $completionTokens = $resolvedTokens['completion_tokens'];
+                        $totalTokens = $resolvedTokens['total_tokens'];
+
+                        // Emit usage chunk to client if requested via stream_options.include_usage and not yet emitted
+                        if ($clientRequestedUsage && !$usageChunkEmittedToClient) {
+                            echo $this->tokenizer->formatStreamUsageChunk($modelName, $promptTokens, $completionTokens, $totalTokens);
+                            if (ob_get_level() > 0) @ob_flush();
+                            @flush();
+                        }
+
                         // Increment usage tokens
-                        $account->increment('tokens_used_today', max(1, $streamedChunksCount));
+                        $account->increment('tokens_used_today', max(1, $totalTokens));
                         $account->update(['fail_count' => 0, 'last_error' => null]);
 
                         if ($gatewayKey) {
-                            $gatewayKey->increment('tokens_used_today', max(1, $streamedChunksCount));
-                            $gatewayKey->update(['last_used_at' => now()]);
-                            \App\Http\Middleware\EnforceGatewayRateLimits::recordTokenUsage($gatewayKey, max(1, $streamedChunksCount));
+                            \App\Http\Middleware\EnforceGatewayRateLimits::settleDailyTokens(
+                                $gatewayKey,
+                                $reservedTokens,
+                                max(1, $totalTokens)
+                            );
                         }
 
                         $costData = $this->costCalculator->calculate(
                             $modelName,
-                            0,
-                            $streamedChunksCount,
+                            $promptTokens,
+                            $completionTokens,
                             $savedTokens,
                             false
                         );
 
-                        GatewayLog::create([
+                        // Record successful streaming log asynchronously via queue
+                        GatewayLog::record([
                             'gateway_key_id' => $gatewayKey?->id,
                             'requested_model' => $requestedModel,
                             'routed_provider' => $providerSlug,
                             'routed_model' => $modelName,
                             'account_label' => $account->label,
-                            'prompt_tokens' => 0,
-                            'completion_tokens' => $streamedChunksCount,
-                            'total_tokens' => $streamedChunksCount,
+                            'prompt_tokens' => $promptTokens,
+                            'completion_tokens' => $completionTokens,
+                            'total_tokens' => $totalTokens,
                             'saved_tokens' => $savedTokens,
                             'cost_usd' => $costData['cost_usd'],
                             'cost_saved_usd' => $costData['cost_saved_usd'],
@@ -512,7 +708,15 @@ class GatewayController extends Controller
                         ]);
 
                         // Store in Response Cache if cacheable
-                        if ($cacheKey && !empty($accumulatedResponseText)) {
+                        if ($cacheKey && ($accumulatedResponseText !== '' || !empty($accumulatedToolCalls))) {
+                            $assembledMessage = [
+                                'role' => 'assistant',
+                                'content' => $accumulatedResponseText !== '' ? $accumulatedResponseText : null,
+                            ];
+                            if (!empty($accumulatedToolCalls)) {
+                                $assembledMessage['tool_calls'] = array_values($accumulatedToolCalls);
+                            }
+
                             $assembled = [
                                 'id' => 'chatcmpl-cached-' . bin2hex(random_bytes(6)),
                                 'object' => 'chat.completion',
@@ -521,25 +725,27 @@ class GatewayController extends Controller
                                 'choices' => [
                                     [
                                         'index' => 0,
-                                        'message' => [
-                                            'role' => 'assistant',
-                                            'content' => $accumulatedResponseText,
-                                        ],
-                                        'finish_reason' => 'stop',
+                                        'message' => $assembledMessage,
+                                        'finish_reason' => $streamFinishReason ?? (!empty($accumulatedToolCalls) ? 'tool_calls' : 'stop'),
                                     ]
                                 ],
                                 'usage' => [
-                                    'prompt_tokens' => 0,
-                                    'completion_tokens' => $streamedChunksCount,
-                                    'total_tokens' => $streamedChunksCount,
+                                    'prompt_tokens' => $promptTokens,
+                                    'completion_tokens' => $completionTokens,
+                                    'total_tokens' => $totalTokens,
                                 ],
                             ];
+                            $ttl = $this->cacheService->calculateTtl($payload);
                             $this->cacheService->put($cacheKey, $assembled, [
                                 'provider' => $providerSlug,
                                 'model' => $modelName,
                                 'account' => $account->label,
+                                'saved_tokens' => $savedTokens,
+                                'cost_usd' => $costData['cost_usd'],
+                                'cost_saved_usd' => $costData['cost_saved_usd'],
+                                'redacted_pii_count' => $redactedPiiCount,
                                 'latency_ms' => $latencyMs,
-                            ]);
+                            ], $ttl);
                         }
 
                         return;
@@ -573,6 +779,10 @@ class GatewayController extends Controller
 
             // If all fallback targets failed
             if (!$streamSuccess) {
+                if ($gatewayKey && $reservedTokens > 0) {
+                    \App\Http\Middleware\EnforceGatewayRateLimits::rollbackDailyTokens($gatewayKey, $reservedTokens);
+                }
+
                 $summary = implode(' | ', $attemptErrors);
                 $errPayload = [
                     'error' => [
@@ -587,7 +797,8 @@ class GatewayController extends Controller
                 if (ob_get_level() > 0) @ob_flush();
                 @flush();
 
-                GatewayLog::create([
+                // Record streaming failure log asynchronously via queue
+                GatewayLog::record([
                     'gateway_key_id' => $gatewayKey?->id,
                     'requested_model' => $requestedModel,
                     'routed_provider' => null,

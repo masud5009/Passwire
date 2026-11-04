@@ -24,14 +24,8 @@ class GeminiAdapter implements ProviderAdapterInterface
         }
 
         $action = $isStream ? 'streamGenerateContent?alt=sse' : 'generateContent';
-        $url = "{$cleanBase}/models/{$targetModel}:{$action}";
 
-        if ($apiKey) {
-            $separator = str_contains($url, '?') ? '&' : '?';
-            $url .= "{$separator}key={$apiKey}";
-        }
-
-        return $url;
+        return "{$cleanBase}/models/{$targetModel}:{$action}";
     }
 
     public function formatHeaders(string $apiKey, bool $isStream = false): array
@@ -458,6 +452,14 @@ class GeminiAdapter implements ProviderAdapterInterface
                 ],
             ],
         ];
+
+        if (isset($data['usageMetadata'])) {
+            $chunk['usage'] = [
+                'prompt_tokens' => (int) ($data['usageMetadata']['promptTokenCount'] ?? 0),
+                'completion_tokens' => (int) ($data['usageMetadata']['candidatesTokenCount'] ?? 0),
+                'total_tokens' => (int) ($data['usageMetadata']['totalTokenCount'] ?? 0),
+            ];
+        }
 
         return 'data: ' . json_encode($chunk, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "\n\n";
     }

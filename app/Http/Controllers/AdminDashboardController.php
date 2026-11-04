@@ -7,8 +7,10 @@ use App\Models\GatewayKey;
 use App\Models\GatewayLog;
 use App\Models\ProviderAccount;
 use App\Models\RoutingCombo;
+use App\Rules\SafePublicUrl;
 use App\Services\Gateway\OmniRouterService;
 use App\Services\Gateway\ResponseCacheService;
+use App\Services\Security\SsrfProtectionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -31,15 +33,16 @@ class AdminDashboardController extends Controller
      */
     public function overview(): View
     {
-        $today = today();
+        $todayStart = today()->startOfDay();
+        $todayEnd = today()->endOfDay();
 
         $stats = [
-            'total_requests_today' => GatewayLog::whereDate('created_at', $today)->count(),
-            'total_tokens_today' => (int) GatewayLog::whereDate('created_at', $today)->sum('total_tokens'),
-            'total_saved_tokens' => (int) GatewayLog::whereDate('created_at', $today)->sum('saved_tokens'),
-            'total_cost_today' => (float) GatewayLog::whereDate('created_at', $today)->sum('cost_usd'),
-            'total_cost_saved_today' => (float) GatewayLog::whereDate('created_at', $today)->sum('cost_saved_usd'),
-            'avg_latency_ms' => (int) round(GatewayLog::whereDate('created_at', $today)->where('status_code', 200)->avg('latency_ms') ?? 0),
+            'total_requests_today' => GatewayLog::whereBetween('created_at', [$todayStart, $todayEnd])->count(),
+            'total_tokens_today' => (int) GatewayLog::whereBetween('created_at', [$todayStart, $todayEnd])->sum('total_tokens'),
+            'total_saved_tokens' => (int) GatewayLog::whereBetween('created_at', [$todayStart, $todayEnd])->sum('saved_tokens'),
+            'total_cost_today' => (float) GatewayLog::whereBetween('created_at', [$todayStart, $todayEnd])->sum('cost_usd'),
+            'total_cost_saved_today' => (float) GatewayLog::whereBetween('created_at', [$todayStart, $todayEnd])->sum('cost_saved_usd'),
+            'avg_latency_ms' => (int) round(GatewayLog::whereBetween('created_at', [$todayStart, $todayEnd])->where('status_code', 200)->avg('latency_ms') ?? 0),
             'active_accounts_count' => ProviderAccount::where('is_active', true)
                 ->where(function ($q) {
                     $q->whereNull('cooldown_until')->orWhere('cooldown_until', '<=', now());
@@ -48,8 +51,8 @@ class AdminDashboardController extends Controller
                 ->whereNotNull('cooldown_until')
                 ->where('cooldown_until', '>', now())
                 ->count(),
-            'cached_requests_today' => GatewayLog::whereDate('created_at', $today)->where('is_cached', true)->count(),
-            'redacted_pii_today' => (int) GatewayLog::whereDate('created_at', $today)->sum('redacted_pii_count'),
+            'cached_requests_today' => GatewayLog::whereBetween('created_at', [$todayStart, $todayEnd])->where('is_cached', true)->count(),
+            'redacted_pii_today' => (int) GatewayLog::whereBetween('created_at', [$todayStart, $todayEnd])->sum('redacted_pii_count'),
             'cache_stats' => $this->cacheService->getHitStats(),
         ];
 
@@ -126,8 +129,10 @@ class AdminDashboardController extends Controller
     public function logs(): View
     {
         $logs = GatewayLog::with('gatewayKey')->latest()->take(100)->get();
+        $retentionDays = (int) config('gateway.log_retention_days', 30);
+        $totalLogsCount = GatewayLog::count();
 
-        return view('dashboard.logs', compact('logs'));
+        return view('dashboard.logs', compact('logs', 'retentionDays', 'totalLogsCount'));
     }
 
     /**
@@ -339,7 +344,7 @@ class AdminDashboardController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'slug' => 'nullable|string|max:100|unique:ai_providers,slug',
-            'base_url' => 'required|string|url|max:255',
+            'base_url' => ['required', 'string', 'url', 'max:255', new SafePublicUrl()],
             'format' => 'required|in:openai,anthropic,gemini',
             'description' => 'nullable|string|max:3000',
             'models_catalog' => 'nullable|string',
@@ -381,7 +386,7 @@ class AdminDashboardController extends Controller
     {
         $validated = $request->validate([
             'name' => 'sometimes|required|string|max:255',
-            'base_url' => 'sometimes|required|url|max:255',
+            'base_url' => ['sometimes', 'required', 'url', 'max:255', new SafePublicUrl()],
             'format' => 'sometimes|required|in:openai,anthropic,gemini',
             'description' => 'nullable|string|max:3000',
         ]);
@@ -515,6 +520,7 @@ class AdminDashboardController extends Controller
 
         try {
             $url = $adapter->buildUrl($provider->base_url, $model, false, $account->api_key);
+            (new SsrfProtectionService())->assertSafeUrl($url);
             $headers = $adapter->formatHeaders($account->api_key, false);
             $body = $adapter->formatPayload($model, [
                 'messages' => [['role' => 'user', 'content' => 'Say OK']],
@@ -613,7 +619,9 @@ class AdminDashboardController extends Controller
         // Gemini native /models endpoint support
         if ($provider->format === 'gemini') {
             try {
-                $modelsUrl = "{$baseUrl}/models?key={$apiKey}";
+                $modelsUrl = "{$baseUrl}/models";
+                (new SsrfProtectionService())->assertSafeUrl($modelsUrl);
+
                 $res = Http::withHeaders([
                     'x-goog-api-key' => $apiKey,
                     'Accept' => 'application/json',
@@ -653,6 +661,8 @@ class AdminDashboardController extends Controller
                 $modelsUrl = str_ends_with($baseUrl, '/messages')
                     ? substr($baseUrl, 0, -strlen('/messages')) . '/models'
                     : $baseUrl . '/models';
+
+                (new SsrfProtectionService())->assertSafeUrl($modelsUrl);
 
                 $res = Http::withHeaders([
                     'x-api-key' => $apiKey,
@@ -817,18 +827,24 @@ class AdminDashboardController extends Controller
             'tpm_limit' => 'nullable|integer|min:1',
         ]);
 
-        $key = 'sk-pw-' . bin2hex(random_bytes(16));
+        $rawKey = GatewayKey::generateSecretKey();
 
-        GatewayKey::create([
+        $gatewayKey = GatewayKey::create([
             'name' => $validated['name'],
-            'key' => $key,
+            'key' => $rawKey,
             'daily_token_limit' => $validated['daily_token_limit'] ?? null,
             'rpm_limit' => $validated['rpm_limit'] ?? null,
             'tpm_limit' => $validated['tpm_limit'] ?? null,
             'is_active' => true,
         ]);
 
-        return back()->with('success', "Generated key '{$validated['name']}': {$key}");
+        return back()
+            ->with('success', "API Key '{$validated['name']}' created successfully.")
+            ->with('new_key_generated', [
+                'name' => $gatewayKey->name,
+                'key' => $rawKey,
+                'prefix' => $gatewayKey->key_prefix,
+            ]);
     }
 
     /**
@@ -882,6 +898,21 @@ class AdminDashboardController extends Controller
         GatewayLog::truncate();
 
         return back()->with('success', 'Gateway logs cleared successfully.');
+    }
+
+    /**
+     * Prune old gateway logs based on configured retention period or requested days.
+     */
+    public function pruneLogs(Request $request): RedirectResponse
+    {
+        $days = (int) $request->input('days', config('gateway.log_retention_days', 30));
+        if ($days < 1) {
+            $days = 30;
+        }
+
+        $deleted = GatewayLog::pruneOlderThan($days);
+
+        return back()->with('success', "Successfully pruned {$deleted} log record(s) older than {$days} days.");
     }
 
     /**

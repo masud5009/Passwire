@@ -28,7 +28,7 @@ class PasswireInstallCommandTest extends TestCase
         $this->assertTrue(\Illuminate\Support\Facades\Hash::check('secretpass123', $admin->password));
 
         // Verify active master gateway key exists
-        $masterKey = GatewayKey::where('is_active', true)->where('key', 'like', 'sk-pw-%')->first();
+        $masterKey = GatewayKey::where('is_active', true)->where('key_prefix', 'like', 'sk-pw-%')->first();
         $this->assertNotNull($masterKey);
     }
 }

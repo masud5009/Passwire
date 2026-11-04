@@ -11,6 +11,7 @@ use App\Services\Gateway\CostCalculatorService;
 use App\Services\Gateway\PromptCompressor;
 use App\Services\Gateway\ResponseCacheService;
 use App\Services\Notification\AlertNotificationService;
+use App\Services\Security\SsrfProtectionService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -19,6 +20,7 @@ use RuntimeException;
 class OmniRouterService
 {
     protected AlertNotificationService $alertService;
+    protected SsrfProtectionService $ssrf;
 
     /**
      * Create a new OmniRouterService instance.
@@ -28,9 +30,11 @@ class OmniRouterService
         protected FormatTranslator $formatTranslator,
         protected ResponseCacheService $cacheService,
         protected CostCalculatorService $costCalculator,
-        ?AlertNotificationService $alertService = null
+        ?AlertNotificationService $alertService = null,
+        ?SsrfProtectionService $ssrf = null
     ) {
         $this->alertService = $alertService ?? new AlertNotificationService();
+        $this->ssrf = $ssrf ?? new SsrfProtectionService();
     }
 
     /**
@@ -80,13 +84,14 @@ class OmniRouterService
                     $map = [];
                     foreach ($models as $m) {
                         $modelOnly = str_contains($m, '/') ? explode('/', $m, 2)[1] : $m;
+                        $modelKeys = array_values(array_unique([$modelOnly, $m]));
+
+                        // Utilizes gateway_logs_latency_strategy_idx (status_code, routed_model, created_at)
                         $avg = GatewayLog::where('status_code', 200)
-                            ->where(function ($q) use ($m, $modelOnly) {
-                                $q->where('routed_model', $modelOnly)
-                                  ->orWhere('routed_model', $m);
-                            })
+                            ->whereIn('routed_model', $modelKeys)
                             ->where('created_at', '>=', now()->subHours(24))
                             ->avg('latency_ms');
+
                         $map[$m] = $avg !== null ? (float) $avg : 999999.0;
                     }
                     return $map;
@@ -173,18 +178,20 @@ class OmniRouterService
     {
         $today = now()->toDateString();
 
-        // Auto-reset daily usage if the date has changed or is null
-        ProviderAccount::whereHas('provider', function ($query) use ($providerSlug) {
-            $query->where('slug', $providerSlug);
-        })
-        ->where(function ($query) use ($today) {
-            $query->whereNull('usage_reset_date')
-                ->orWhere('usage_reset_date', '<', $today);
-        })
-        ->update([
-            'tokens_used_today' => 0,
-            'usage_reset_date' => $today,
-        ]);
+        // Check if daily reset was already processed today using a fast Cache flag.
+        // Scheduled at midnight via passwire:reset-daily-usage; this fallback runs at most once per day.
+        $resetDoneKey = "provider_accounts_reset_done:{$today}";
+        if (!Cache::get($resetDoneKey)) {
+            ProviderAccount::where(function ($query) use ($today) {
+                $query->whereNull('usage_reset_date')
+                    ->orWhere('usage_reset_date', '<', $today);
+            })->update([
+                'tokens_used_today' => 0,
+                'usage_reset_date' => $today,
+            ]);
+
+            Cache::put($resetDoneKey, true, now()->endOfDay());
+        }
 
         return ProviderAccount::with('provider')
             ->whereHas('provider', function ($query) use ($providerSlug) {
@@ -209,11 +216,12 @@ class OmniRouterService
      *
      * @param array<string, mixed> $payload
      * @param GatewayKey|null $gatewayKey
+     * @param int $reservedTokens
      * @return array{response: array<string, mixed>, meta: array<string, mixed>}
      *
      * @throws RuntimeException
      */
-    public function dispatchSync(array $payload, ?GatewayKey $gatewayKey = null): array
+    public function dispatchSync(array $payload, ?GatewayKey $gatewayKey = null, int $reservedTokens = 0): array
     {
         @set_time_limit(120);
 
@@ -242,8 +250,11 @@ class OmniRouterService
                 throw new RuntimeException("Gateway key '{$gatewayKey->name}' is inactive.");
             }
 
-            if ($gatewayKey->daily_token_limit !== null && $gatewayKey->tokens_used_today >= $gatewayKey->daily_token_limit) {
-                throw new RuntimeException("Daily token limit exceeded for gateway key '{$gatewayKey->name}'.");
+            if ($gatewayKey->daily_token_limit !== null) {
+                $usage = \App\Http\Middleware\EnforceGatewayRateLimits::getDailyUsage($gatewayKey);
+                if ($reservedTokens > 0 ? $usage > $gatewayKey->daily_token_limit : $usage >= $gatewayKey->daily_token_limit) {
+                    throw new RuntimeException("Daily token limit exceeded for gateway key '{$gatewayKey->name}'.");
+                }
             }
         }
 
@@ -259,11 +270,20 @@ class OmniRouterService
 
         // 3.5 Check Response Cache
         $isCacheable = $this->cacheService->isCacheable($payload);
-        $cacheKey = $isCacheable ? $this->cacheService->generateKey($payload) : null;
+        $cacheKey = $isCacheable ? $this->cacheService->generateKey($payload, $gatewayKey) : null;
 
         if ($cacheKey) {
             $cachedEntry = $this->cacheService->get($cacheKey);
             if ($cachedEntry !== null) {
+                // Settle reservation for cache hit (0 tokens actually consumed)
+                if ($gatewayKey && $reservedTokens > 0) {
+                    \App\Http\Middleware\EnforceGatewayRateLimits::settleDailyTokens(
+                        $gatewayKey,
+                        $reservedTokens,
+                        0
+                    );
+                }
+
                 $cacheLatencyMs = max(1, (int) round((microtime(true) - $overallStartTime) * 1000));
                 $cachedResponse = $cachedEntry['response'] ?? [];
                 $cachedMeta = $cachedEntry['meta'] ?? [];
@@ -280,7 +300,8 @@ class OmniRouterService
                     true
                 );
 
-                GatewayLog::create([
+                // Record cached GatewayLog entry asynchronously via queue
+                GatewayLog::record([
                     'gateway_key_id' => $gatewayKey?->id,
                     'requested_model' => $requestedModel,
                     'routed_provider' => $cachedMeta['provider'] ?? 'cache',
@@ -348,6 +369,7 @@ class OmniRouterService
 
                 $adapter = $this->formatTranslator->getAdapter($provider->format ?? 'openai');
                 $url = $adapter->buildUrl($provider->base_url, $modelName, false, $account->api_key);
+                $this->ssrf->assertSafeUrl($url);
                 $headers = $adapter->formatHeaders($account->api_key, false);
                 $body = $adapter->formatPayload($modelName, $targetPayload);
 
@@ -383,13 +405,13 @@ class OmniRouterService
                         'last_error' => null,
                     ]);
 
-                    // Increment gateway key tokens if provided
+                    // Settle gateway key daily tokens and TPM
                     if ($gatewayKey) {
-                        $gatewayKey->increment('tokens_used_today', $totalTokens);
-                        $gatewayKey->update([
-                            'last_used_at' => now(),
-                        ]);
-                        \App\Http\Middleware\EnforceGatewayRateLimits::recordTokenUsage($gatewayKey, $totalTokens);
+                        \App\Http\Middleware\EnforceGatewayRateLimits::settleDailyTokens(
+                            $gatewayKey,
+                            $reservedTokens,
+                            $totalTokens
+                        );
                     }
 
                     $costData = $this->costCalculator->calculate(
@@ -400,8 +422,8 @@ class OmniRouterService
                         false
                     );
 
-                    // Create successful GatewayLog record
-                    GatewayLog::create([
+                    // Record successful GatewayLog asynchronously via queue
+                    GatewayLog::record([
                         'gateway_key_id' => $gatewayKey?->id,
                         'requested_model' => $requestedModel,
                         'routed_provider' => $providerSlug,
@@ -437,7 +459,8 @@ class OmniRouterService
 
                     // Store into response cache if cacheable
                     if ($cacheKey) {
-                        $this->cacheService->put($cacheKey, $normalizedData, $result['meta']);
+                        $ttl = $this->cacheService->calculateTtl($payload);
+                        $this->cacheService->put($cacheKey, $normalizedData, $result['meta'], $ttl);
                     }
 
                     return $result;
@@ -471,11 +494,20 @@ class OmniRouterService
             }
         }
 
-        // All accounts and providers failed: log 502 and throw RuntimeException
+        // All accounts and providers failed: rollback daily reservation if key was present
+        if ($gatewayKey && $reservedTokens > 0) {
+            \App\Http\Middleware\EnforceGatewayRateLimits::rollbackDailyTokens($gatewayKey, $reservedTokens);
+        }
+
+        if ($gatewayKey && $reservedTokens > 0) {
+            \App\Http\Middleware\EnforceGatewayRateLimits::rollbackDailyTokens($gatewayKey, $reservedTokens);
+        }
+
         $totalLatency = (int) round((microtime(true) - $overallStartTime) * 1000);
         $summary = implode(' | ', $attemptErrors);
 
-        GatewayLog::create([
+        // Record 502 failure log asynchronously via queue
+        GatewayLog::record([
             'gateway_key_id' => $gatewayKey?->id,
             'requested_model' => $requestedModel,
             'routed_provider' => null,
@@ -499,11 +531,12 @@ class OmniRouterService
      *
      * @param array<string, mixed> $payload
      * @param GatewayKey|null $gatewayKey
+     * @param int $reservedTokens
      * @return array{response: array<string, mixed>, meta: array<string, mixed>}
      *
      * @throws RuntimeException
      */
-    public function dispatchEmbeddingSync(array $payload, ?GatewayKey $gatewayKey = null): array
+    public function dispatchEmbeddingSync(array $payload, ?GatewayKey $gatewayKey = null, int $reservedTokens = 0): array
     {
         @set_time_limit(120);
 
@@ -536,8 +569,11 @@ class OmniRouterService
                 throw new RuntimeException("Gateway key '{$gatewayKey->name}' is inactive.");
             }
 
-            if ($gatewayKey->daily_token_limit !== null && $gatewayKey->tokens_used_today >= $gatewayKey->daily_token_limit) {
-                throw new RuntimeException("Daily token limit exceeded for gateway key '{$gatewayKey->name}'.");
+            if ($gatewayKey->daily_token_limit !== null) {
+                $usage = \App\Http\Middleware\EnforceGatewayRateLimits::getDailyUsage($gatewayKey);
+                if ($reservedTokens > 0 ? $usage > $gatewayKey->daily_token_limit : $usage >= $gatewayKey->daily_token_limit) {
+                    throw new RuntimeException("Daily token limit exceeded for gateway key '{$gatewayKey->name}'.");
+                }
             }
         }
 
@@ -602,7 +638,8 @@ class OmniRouterService
                     if ($provider->format === 'gemini') {
                         $isBatch = is_array($cleanInput);
                         $endpoint = $isBatch ? ':batchEmbedContents' : ':embedContent';
-                        $url = rtrim($provider->base_url, '/') . "/models/{$modelName}{$endpoint}?key={$account->api_key}";
+                        $url = rtrim($provider->base_url, '/') . "/models/{$modelName}{$endpoint}";
+                        $this->ssrf->assertSafeUrl($url);
 
                         if ($isBatch) {
                             $geminiBody = [
@@ -632,6 +669,7 @@ class OmniRouterService
                     } else {
                         // OpenAI and OpenAI-compatible
                         $url = rtrim($provider->base_url, '/') . '/embeddings';
+                        $this->ssrf->assertSafeUrl($url);
                         $outboundPayload = $payload;
                         $outboundPayload['model'] = $modelName;
                         $outboundPayload['input'] = $cleanInput;
@@ -695,9 +733,11 @@ class OmniRouterService
                     $account->update(['fail_count' => 0, 'last_error' => null]);
 
                     if ($gatewayKey) {
-                        $gatewayKey->increment('tokens_used_today', max(1, $promptTokens));
-                        $gatewayKey->update(['last_used_at' => now()]);
-                        \App\Http\Middleware\EnforceGatewayRateLimits::recordTokenUsage($gatewayKey, max(1, $promptTokens));
+                        \App\Http\Middleware\EnforceGatewayRateLimits::settleDailyTokens(
+                            $gatewayKey,
+                            $reservedTokens,
+                            max(1, $promptTokens)
+                        );
                     }
 
                     $costData = $this->costCalculator->calculate(
@@ -708,7 +748,8 @@ class OmniRouterService
                         false
                     );
 
-                    GatewayLog::create([
+                    // Record successful embedding log asynchronously via queue
+                    GatewayLog::record([
                         'gateway_key_id' => $gatewayKey?->id,
                         'requested_model' => $requestedModel,
                         'routed_provider' => $providerSlug,
@@ -769,10 +810,15 @@ class OmniRouterService
             }
         }
 
+        if ($gatewayKey && $reservedTokens > 0) {
+            \App\Http\Middleware\EnforceGatewayRateLimits::rollbackDailyTokens($gatewayKey, $reservedTokens);
+        }
+
         $totalLatency = (int) round((microtime(true) - $overallStartTime) * 1000);
         $summary = implode(' | ', $attemptErrors);
 
-        GatewayLog::create([
+        // Record 502 failure log asynchronously via queue
+        GatewayLog::record([
             'gateway_key_id' => $gatewayKey?->id,
             'requested_model' => $requestedModel,
             'routed_provider' => null,

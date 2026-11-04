@@ -4,6 +4,54 @@
 
 @section('content')
 <div class="space-y-6">
+    <!-- Top Toolbar: Stats & Retention Prune Actions -->
+    <div class="bg-white dark:bg-[#121622]/90 border border-zinc-200 dark:border-white/[0.07] rounded-2xl p-4 sm:p-5 shadow-sm dark:shadow-lg flex items-center justify-between gap-4 flex-wrap">
+        <div>
+            <h2 class="text-base font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+                <span>Request Telemetry Logs</span>
+                <span class="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
+                <span class="text-xs font-mono font-medium text-zinc-500 dark:text-zinc-400">({{ number_format($totalLogsCount ?? $logs->count()) }} total records)</span>
+            </h2>
+            <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                Indexed real-time audit logs with B-Tree acceleration.
+                @if(($retentionDays ?? 30) > 0)
+                    <span class="text-emerald-500 dark:text-emerald-400 font-medium">Automatic daily retention active ({{ $retentionDays }} days).</span>
+                @else
+                    <span class="text-amber-500 dark:text-amber-400 font-medium">Retention auto-pruning disabled.</span>
+                @endif
+            </p>
+        </div>
+
+        <div class="flex items-center gap-2.5 flex-wrap">
+            @if($logs->isNotEmpty())
+                <!-- Prune Old Logs Action -->
+                <form action="{{ route('dashboard.logs.prune') }}" method="POST" class="inline">
+                    @csrf
+                    <input type="hidden" name="days" value="{{ $retentionDays ?? 30 }}">
+                    <button type="button"
+                        @click="confirmDelete($el.closest('form'), 'Prune Historical Logs', 'Prune all request logs older than {{ $retentionDays ?? 30 }} days? Recent logs will remain intact.', 'Yes, Prune Old Logs')"
+                        class="px-3.5 py-2 text-xs font-semibold text-zinc-300 hover:text-white bg-zinc-800/80 hover:bg-zinc-700/80 border border-white/10 rounded-xl transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
+                        title="Prune logs older than retention period">
+                        <i data-lucide="archive" class="w-4 h-4 text-zinc-400"></i>
+                        <span>Prune &gt;{{ $retentionDays ?? 30 }}d</span>
+                    </button>
+                </form>
+
+                <!-- Clear All Logs Action -->
+                <form action="{{ route('dashboard.logs.clear') }}" method="POST" class="inline">
+                    @csrf
+                    <button type="button"
+                        @click="confirmDelete($el.closest('form'), 'Clear Request Logs', 'Permanently truncate all request logs? This cannot be undone.', 'Yes, Clear All Logs')"
+                        class="px-3.5 py-2 text-xs font-semibold text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-xl transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
+                        title="Clear all logs">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        <span>Clear All Logs</span>
+                    </button>
+                </form>
+            @endif
+        </div>
+    </div>
+
     <!-- Logs Table Container -->
     <div class="bg-[#121215] border border-white/[0.07] rounded-2xl overflow-hidden shadow-lg">
         @if($logs->isNotEmpty())
@@ -20,16 +68,7 @@
                             <th class="py-3.5 px-4">Tokens Saved</th>
                             <th class="py-3.5 px-4">Est. Cost</th>
                             <th class="py-3.5 px-4">Latency</th>
-                            <th class="py-3.5 px-4 text-right">
-                                <form action="{{ route('dashboard.logs.clear') }}" method="POST" class="inline">
-                                    @csrf
-                                    <button type="button"
-                                        @click="confirmDelete($el.closest('form'), 'Clear Request Logs', 'Permanently clear all request logs? This cannot be undone.', 'Yes, Clear All Logs')"
-                                        class="p-2 text-zinc-500 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-colors cursor-pointer" title="Clear All Logs">
-                                        <i data-lucide="trash-2" class="w-4 h-4 pointer-events-none"></i>
-                                    </button>
-                                </form>
-                            </th>
+                            <th class="py-3.5 px-4">Status</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-white/[0.05]">

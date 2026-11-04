@@ -118,6 +118,98 @@
         </div>
     </div>
 
+    <!-- Newly Created API Key Modal (One-time Display) -->
+    @if(session('new_key_generated'))
+    <div x-data="{ showNewKeyModal: true, keyCopied: false }"
+        x-show="showNewKeyModal"
+        x-transition:enter="transition ease-out duration-150"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-100"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80" x-cloak>
+        <div x-show="showNewKeyModal"
+            x-transition:enter="transition ease-out duration-150"
+            x-transition:enter-start="opacity-0 scale-95"
+            x-transition:enter-end="opacity-100 scale-100"
+            x-transition:leave="transition ease-in duration-100"
+            x-transition:leave-start="opacity-100 scale-100"
+            x-transition:leave-end="opacity-0 scale-95"
+            class="bg-[#121215] border border-emerald-500/30 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden p-6 space-y-4">
+
+            <div class="flex items-center justify-between border-b border-white/[0.06] pb-3.5">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+                        <i data-lucide="key" class="w-4 h-4"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-white">Save Your API Key</h3>
+                        <p class="text-xs text-zinc-400">Key created for <span class="text-white font-medium">{{ session('new_key_generated')['name'] }}</span></p>
+                    </div>
+                </div>
+                <button type="button" @click="showNewKeyModal = false" class="text-zinc-500 hover:text-white text-xl leading-none cursor-pointer">&times;</button>
+            </div>
+
+            <div class="bg-amber-500/10 border border-amber-500/25 rounded-xl p-3.5 text-xs text-amber-200 flex items-start gap-2.5">
+                <i data-lucide="shield-alert" class="w-4 h-4 text-amber-400 shrink-0 mt-0.5"></i>
+                <div class="space-y-1">
+                    <div class="font-semibold text-amber-300">Copy this API key now</div>
+                    <div class="text-amber-200/80 leading-relaxed">
+                        For security reasons, Passwire stores your key as a one-way <strong>SHA-256 hash</strong> in the database. <strong>You will not be able to view this full key again</strong> after leaving this page.
+                    </div>
+                </div>
+            </div>
+
+            <div class="space-y-1.5">
+                <label class="block text-xs font-semibold uppercase tracking-wider text-zinc-400">Secret API Key</label>
+                <div class="flex items-center gap-2 bg-[#09090b] border border-white/10 rounded-xl p-2.5">
+                    <input type="text" readonly value="{{ session('new_key_generated')['key'] }}" id="createdApiKeyInput"
+                        class="bg-transparent text-emerald-300 font-mono text-xs w-full focus:outline-none select-all">
+                    <button type="button"
+                        @click="copyText('{{ session('new_key_generated')['key'] }}', 'API key copied to clipboard!'); keyCopied = true"
+                        class="btn-primary px-3 py-1.5 text-xs text-white rounded-lg flex items-center gap-1.5 cursor-pointer shrink-0">
+                        <i data-lucide="copy" class="w-3.5 h-3.5" x-show="!keyCopied"></i>
+                        <i data-lucide="check" class="w-3.5 h-3.5 text-white" x-show="keyCopied" x-cloak></i>
+                        <span x-text="keyCopied ? 'Copied!' : 'Copy'"></span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="pt-3 border-t border-white/[0.06] flex items-center justify-end">
+                <button type="button" @click="showNewKeyModal = false"
+                    class="btn-primary px-4 py-2 text-xs font-semibold text-white rounded-xl transition-all cursor-pointer">
+                    I have saved this key
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-4 flex items-center justify-between gap-4 flex-wrap">
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                <i data-lucide="check-circle" class="w-4 h-4"></i>
+            </div>
+            <div>
+                <div class="text-sm font-bold text-white">New API Key Generated: {{ session('new_key_generated')['name'] }}</div>
+                <div class="text-xs text-zinc-400 font-mono mt-0.5">
+                    Prefix: <span class="text-emerald-400">{{ session('new_key_generated')['prefix'] }}</span> — Full key will not be shown again.
+                </div>
+            </div>
+        </div>
+        <div class="flex items-center gap-2">
+            <span class="bg-[#09090b] border border-white/10 px-3 py-1.5 rounded-lg text-emerald-300 font-mono text-xs select-all">
+                {{ session('new_key_generated')['key'] }}
+            </span>
+            <button type="button" @click="copyText('{{ session('new_key_generated')['key'] }}', 'API key copied!')"
+                class="btn-primary px-3 py-1.5 text-xs text-white rounded-lg flex items-center gap-1.5 cursor-pointer">
+                <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+                <span>Copy</span>
+            </button>
+        </div>
+    </div>
+    @endif
+
     <!-- Keys Table -->
     <div class="bg-[#121215] border border-white/[0.07] rounded-2xl overflow-hidden shadow-lg">
         @if($gatewayKeys->isNotEmpty())
@@ -142,12 +234,12 @@
                                 </td>
                                 <td class="py-4 px-5 font-mono">
                                     <div class="flex items-center gap-2">
-                                        <span class="bg-[#09090b] border border-white/10 px-2.5 py-1 rounded-lg text-emerald-300 font-mono text-xs select-all">
-                                            {{ $gKey->key }}
+                                        <span class="bg-[#09090b] border border-white/10 px-2.5 py-1 rounded-lg text-emerald-300 font-mono text-xs select-all" title="Secret is SHA-256 hashed in database">
+                                            {{ $gKey->key_prefix ?? $gKey->key }}
                                         </span>
-                                        <button type="button" @click="copyText('{{ $gKey->key }}', 'API key copied!')" class="p-1.5 text-zinc-400 hover:text-white cursor-pointer" title="Copy Key">
-                                            <i data-lucide="copy" class="w-4 h-4"></i>
-                                        </button>
+                                        <span class="text-[10px] uppercase font-bold text-zinc-400 bg-white/5 px-1.5 py-0.5 rounded border border-white/10" title="Key is safely stored as a SHA-256 hash">
+                                            SHA-256
+                                        </span>
                                     </div>
                                 </td>
                                 <td class="py-4 px-5 whitespace-nowrap">
