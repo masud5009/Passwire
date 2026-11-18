@@ -119,8 +119,6 @@
 
                 <!-- Navigation Links with Dedicated Routes -->
                 <nav class="p-3 space-y-1">
-                    <div class="text-[11px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 px-3 pt-2 pb-1">Navigation</div>
-
                     <!-- 1. Overview -->
                     <a href="{{ route('dashboard.overview') }}"
                         @class([
@@ -178,8 +176,6 @@
                         <span class="text-[11px] px-1.5 py-0.5 rounded font-mono bg-zinc-800 text-zinc-400">{{ $sidebarKeysCount }}</span>
                     </a>
 
-                    <div class="text-[11px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 px-3 pt-3 pb-1">Studio & Inspector</div>
-
                     <!-- 5. Live Playground -->
                     <a href="{{ route('dashboard.playground') }}"
                         @class([
@@ -220,9 +216,6 @@
                             <span>Alerts & Webhooks</span>
                         </div>
                     </a>
-
-                    <!-- Account Navigation Section -->
-                    <div class="text-[11px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 px-3 pt-3 pb-1">Account</div>
 
                     <!-- 8. Edit Profile -->
                     <a href="{{ route('dashboard.profile') }}"

@@ -29,6 +29,7 @@
     <!-- ============================================================== -->
     <!-- TOP TOOLBAR: HEADER & ACTION BUTTON                            -->
     <!-- ============================================================== -->
+    @unless($gatewayKeys->isEmpty())
     <div class="bg-white dark:bg-[#121622]/90 border border-zinc-200 dark:border-white/[0.07] rounded-2xl p-4 sm:p-5 shadow-sm dark:shadow-lg flex items-center justify-between gap-4 flex-wrap">
         <div>
             <h2 class="text-base font-bold text-zinc-900 dark:text-white flex items-center gap-2">
@@ -45,6 +46,7 @@
             <span>Create API Key</span>
         </button>
     </div>
+    @endunless
 
     <!-- Create API Key Modal -->
     <div x-show="createModalOpen"
