@@ -87,7 +87,8 @@ class AdminProfileTest extends TestCase
         $response->assertStatus(200);
         $response->assertSee('Change Password', false);
         $response->assertSee('Current Password', false);
-        $response->assertSee('Sign-in Security Preferences', false);
+        $response->assertDontSee('Sign-in Security Preferences', false);
+        $response->assertDontSee('Hide default password', false);
     }
 
     public function test_admin_can_update_password_with_valid_current_password(): void
@@ -131,44 +132,89 @@ class AdminProfileTest extends TestCase
         $this->assertTrue(Hash::check('correct-password', $admin->password));
     }
 
-    public function test_admin_can_toggle_hide_demo_credentials(): void
+    public function test_login_page_does_not_contain_default_credentials_card_or_autofill(): void
     {
-        $admin = User::factory()->create([
-            'email' => 'toggle_' . uniqid() . '@passwire.local',
+        $response = $this->get('/login');
+
+        $response->assertStatus(200);
+        $response->assertDontSee('Default Credentials', false);
+        $response->assertDontSee('fillDemoBtn', false);
+        $response->assertDontSee('Pre-configured during setup', false);
+        $response->assertDontSee('placeholder="admin@passwire.local"', false);
+    }
+
+    public function test_login_page_renders_create_account_option(): void
+    {
+        $response = $this->get('/login');
+
+        $response->assertStatus(200);
+        $response->assertSee('Create Account', false);
+        $response->assertSee('Admin Name', false);
+        $response->assertSee('Confirm Password', false);
+    }
+
+    public function test_user_can_view_register_page(): void
+    {
+        $response = $this->get('/register');
+
+        $response->assertStatus(200);
+        $response->assertSee('Create Account', false);
+        $response->assertSee('Admin Name', false);
+        $response->assertSee('Confirm Password', false);
+    }
+
+    public function test_user_can_register_and_login_directly_without_email_verification(): void
+    {
+        $email = 'newuser_' . uniqid() . '@example.com';
+
+        $response = $this->post('/register', [
+            'name' => 'New Passwire User',
+            'email' => $email,
+            'password' => 'secure-pass-1234',
+            'password_confirmation' => 'secure-pass-1234',
         ]);
 
-        // 1. Hide default credentials
-        $response = $this->actingAs($admin)->put('/dashboard/password', [
-            'hide_demo_credentials' => '1',
+        $response->assertRedirect('/dashboard');
+        $this->assertAuthenticated();
+
+        $user = User::where('email', $email)->first();
+        $this->assertNotNull($user);
+        $this->assertEquals('New Passwire User', $user->name);
+        $this->assertNotNull($user->email_verified_at);
+        $this->assertTrue(Hash::check('secure-pass-1234', $user->password));
+    }
+
+    public function test_registration_requires_valid_and_unique_data(): void
+    {
+        $existingUser = User::factory()->create([
+            'email' => 'existing_' . uniqid() . '@example.com',
         ]);
 
-        $response->assertRedirect();
-        $this->assertDatabaseHas('site_settings', [
-            'show_demo_credentials' => false,
+        // Duplicate email
+        $response = $this->post('/register', [
+            'name' => 'Duplicate Email User',
+            'email' => $existingUser->email,
+            'password' => 'secret12345',
+            'password_confirmation' => 'secret12345',
         ]);
+        $response->assertSessionHasErrors('email');
 
-        // Login page should now hide the demo badge
-        $this->post('/logout');
-        $loginRes = $this->get('/login');
-        $loginRes->assertStatus(200);
-        $loginRes->assertDontSee('Default Credentials', false);
-        $loginRes->assertDontSee('placeholder="admin@passwire.local"', false);
-
-        // 2. Unhide default credentials
-        $response = $this->actingAs($admin)->put('/dashboard/password', [
-            // hide_demo_credentials omitted = uncheck
+        // Short password (< 8 chars)
+        $response = $this->post('/register', [
+            'name' => 'Short Pass User',
+            'email' => 'shortpass_' . uniqid() . '@example.com',
+            'password' => 'short',
+            'password_confirmation' => 'short',
         ]);
+        $response->assertSessionHasErrors('password');
 
-        $response->assertRedirect();
-        $this->assertDatabaseHas('site_settings', [
-            'show_demo_credentials' => true,
+        // Password mismatch
+        $response = $this->post('/register', [
+            'name' => 'Mismatch Pass User',
+            'email' => 'mismatch_' . uniqid() . '@example.com',
+            'password' => 'secret12345',
+            'password_confirmation' => 'different-secret',
         ]);
-
-        // Login page should now show the demo badge
-        $this->post('/logout');
-        $loginRes = $this->get('/login');
-        $loginRes->assertStatus(200);
-        $loginRes->assertSee('Default Credentials', false);
-        $loginRes->assertSee('placeholder="admin@passwire.local"', false);
+        $response->assertSessionHasErrors('password');
     }
 }

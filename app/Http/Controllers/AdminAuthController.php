@@ -20,13 +20,58 @@ class AdminAuthController extends Controller
     /**
      * Show the login form.
      */
-    public function showLogin(): View|RedirectResponse
+    public function showLogin(Request $request): View|RedirectResponse
     {
         if (Auth::check()) {
             return redirect()->route('dashboard');
         }
 
-        return view('auth.login');
+        $initialMode = $request->query('tab') === 'register' || session('mode') === 'register' || old('action') === 'register' ? 'register' : 'login';
+
+        return view('auth.login', compact('initialMode'));
+    }
+
+    /**
+     * Show the registration form.
+     */
+    public function showRegister(Request $request): View|RedirectResponse
+    {
+        if (Auth::check()) {
+            return redirect()->route('dashboard');
+        }
+
+        $initialMode = 'register';
+
+        return view('auth.login', compact('initialMode'));
+    }
+
+    /**
+     * Handle an incoming registration request and log the user in directly.
+     */
+    public function register(Request $request): RedirectResponse
+    {
+        if (Auth::check()) {
+            return redirect()->route('dashboard');
+        }
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        $user = User::create([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'password' => Hash::make($validated['password']),
+            'email_verified_at' => now(),
+        ]);
+
+        Auth::login($user, $request->boolean('remember', true));
+        $request->session()->regenerate();
+
+        return redirect()->intended('/dashboard')
+            ->with('success', 'Account created successfully! Welcome to Passwire.');
     }
 
     /**
@@ -276,12 +321,11 @@ class AdminAuthController extends Controller
     }
 
     /**
-     * Display the change password & security preferences page.
+     * Display the change password page.
      */
     public function editPassword(Request $request, TwoFactorService $twoFactorService): View
     {
         $user = $request->user();
-        $siteSetting = SiteSetting::getSettings();
 
         $twoFactorQrUri = null;
         if ($user->two_factor_secret) {
@@ -292,32 +336,25 @@ class AdminAuthController extends Controller
             );
         }
 
-        return view('dashboard.password', compact('user', 'siteSetting', 'twoFactorQrUri'));
+        return view('dashboard.password', compact('user', 'twoFactorQrUri'));
     }
 
     /**
-     * Update the admin's password and login security preferences.
+     * Update the admin's password.
      */
     public function updatePassword(Request $request): RedirectResponse
     {
         $user = $request->user();
 
         $validated = $request->validate([
-            'current_password' => ['nullable', 'required_with:password', 'current_password'],
-            'password' => ['nullable', 'string', 'min:8', 'confirmed'],
-            'hide_demo_credentials' => ['nullable', 'boolean'],
+            'current_password' => ['required', 'current_password'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
 
-        if (!empty($validated['password'])) {
-            $user->password = Hash::make($validated['password']);
-            $user->save();
-        }
+        $user->password = Hash::make($validated['password']);
+        $user->save();
 
-        $siteSetting = SiteSetting::getSettings();
-        $siteSetting->show_demo_credentials = ! $request->boolean('hide_demo_credentials');
-        $siteSetting->save();
-
-        return back()->with('success', 'Password and security preferences updated successfully.');
+        return back()->with('success', 'Password updated successfully.');
     }
 
     /**

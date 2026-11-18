@@ -100,6 +100,6 @@ class DashboardUiTest extends TestCase
         $resPassword = $this->actingAs($admin)->get('/dashboard/password');
         $resPassword->assertStatus(200);
         $resPassword->assertSee('Change Password', false);
-        $resPassword->assertSee('Sign-in Security Preferences', false);
+        $resPassword->assertSee('Current Password', false);
     }
 }

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Passwire - Sign In</title>
+    <title>Passwire - Sign In / Register</title>
     <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
     <link rel="alternate icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
 
@@ -122,6 +122,7 @@
 <body class="bg-[#09090b] text-zinc-100 min-h-screen flex items-center justify-center p-4 relative overflow-hidden antialiased selection:bg-emerald-500 selection:text-white"
     x-data="{
         currentTheme: localStorage.getItem('omni_theme') || (document.documentElement.classList.contains('dark') ? 'dark' : 'light'),
+        mode: '{{ $initialMode ?? 'login' }}',
         toggleTheme() {
             if (this.currentTheme === 'dark') {
                 this.currentTheme = 'light';
@@ -133,6 +134,18 @@
                 localStorage.setItem('omni_theme', 'dark');
             }
             this.$nextTick(() => lucide.createIcons());
+        },
+        switchMode(newMode) {
+            this.mode = newMode;
+            if (window.history && window.history.replaceState) {
+                const targetUrl = newMode === 'register' ? '{{ route('register') }}' : '{{ route('login') }}';
+                window.history.replaceState(null, '', targetUrl);
+            }
+            this.$nextTick(() => {
+                if (window.lucide) lucide.createIcons();
+                const firstInput = newMode === 'register' ? document.getElementById('reg_name') : document.getElementById('email');
+                if (firstInput) firstInput.focus();
+            });
         }
     }" x-init="$nextTick(() => lucide.createIcons())">
     <!-- Theme Switcher Top-Right Button -->
@@ -154,12 +167,6 @@
     <div class="absolute -bottom-48 -right-48 w-96 h-96 bg-violet-600/10 rounded-full blur-[128px] pointer-events-none"></div>
     <div class="absolute inset-0 bg-[radial-gradient(#ffffff05_1px,transparent_1px)] [background-size:24px_24px] pointer-events-none"></div>
 
-    @php
-        $showDemo = env('PASSWIRE_SHOW_DEMO_CREDENTIALS') !== null
-            ? filter_var(env('PASSWIRE_SHOW_DEMO_CREDENTIALS'), FILTER_VALIDATE_BOOLEAN)
-            : ($globalSiteSettings->show_demo_credentials ?? true);
-    @endphp
-
     <div class="w-full max-w-md relative z-10">
 
         <!-- Brand Header -->
@@ -178,7 +185,7 @@
             <p class="text-xs text-zinc-400 mt-1.5 font-medium">Self-Hosted Fault-Tolerant AI Gateway & Key Pooler</p>
         </div>
 
-        <!-- Login Card -->
+        <!-- Auth Card -->
         <div class="bg-[#121215] border border-white/[0.08] shadow-2xl shadow-black/80 rounded-2xl p-6 sm:p-8 backdrop-blur-xl relative">
             <!-- Errors Alert -->
             @if (isset($errors) && $errors->any())
@@ -188,116 +195,157 @@
                 </div>
             @endif
 
-            <form id="loginForm" method="POST" action="{{ route('login') }}" class="space-y-4" novalidate>
-                @csrf
-
-                <div>
-                    <label for="email" class="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">Admin Email</label>
-                    <div class="relative">
-                        <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-500">
-                            <i data-lucide="mail" class="w-4 h-4"></i>
-                        </div>
-                        <input type="email" id="email" name="email" value="{{ old('email') }}" autofocus
-                            placeholder="{{ $showDemo ? 'admin@passwire.local' : 'name@example.com' }}"
-                            class="w-full bg-[#09090b] border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-colors">
-                    </div>
-                    <p id="emailError" class="hidden mt-1.5 text-xs text-rose-400 flex items-center gap-1.5"></p>
-                </div>
-
-                <div>
-                    <label for="password" class="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">Password</label>
-                    <div class="relative">
-                        <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-500">
-                            <i data-lucide="lock" class="w-4 h-4"></i>
-                        </div>
-                        <input type="password" id="password" name="password"
-                            placeholder="••••••••"
-                            class="w-full bg-[#09090b] border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-colors">
-                    </div>
-                    <p id="passwordError" class="hidden mt-1.5 text-xs text-rose-400 flex items-center gap-1.5"></p>
-                </div>
-
-                <div class="flex items-center text-xs pt-1">
-                    <label class="flex items-center gap-2 text-zinc-400 cursor-pointer select-none">
-                        <input type="checkbox" name="remember" value="1" checked class="rounded border-white/10 bg-[#09090b] text-emerald-500 focus:ring-emerald-500/30">
-                        <span>Remember session</span>
-                    </label>
-                </div>
-
-                <button type="submit"
-                    style="background-color: #10b981 !important; color: #ffffff !important;"
-                    onmouseover="this.style.backgroundColor='#34d399'"
-                    onmouseout="this.style.backgroundColor='#10b981'"
-                    class="btn-primary w-full py-2.5 px-4 text-white font-semibold rounded-xl text-sm tracking-wide shadow-md transition-all duration-150 transform active:scale-[0.99] flex items-center justify-center gap-2 mt-2 cursor-pointer">
-                    <span style="color: #ffffff !important;">Enter Gateway Console</span>
-                    <i data-lucide="arrow-right" class="w-4 h-4" style="color: #ffffff !important;"></i>
+            <!-- Segmented Control: Sign In / Create Account -->
+            <div class="flex items-center p-1 bg-zinc-100 dark:bg-zinc-900/80 border border-zinc-200 dark:border-white/10 rounded-xl mb-6">
+                <button type="button" @click="switchMode('login')"
+                    :class="mode === 'login' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm font-semibold' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 font-medium'"
+                    class="flex-1 py-2 text-xs rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer">
+                    <i data-lucide="log-in" class="w-3.5 h-3.5"></i>
+                    <span>Sign In</span>
                 </button>
-            </form>
-
-            @if ($showDemo)
-            <!-- Default Demo Credentials Card -->
-            <div class="mt-6 pt-5 border-t border-zinc-200 dark:border-white/[0.08]">
-                <div class="rounded-xl p-3.5 bg-emerald-500/[0.06] dark:bg-emerald-500/10 border border-emerald-500/20 text-xs">
-                    <div class="flex items-center justify-between gap-2 mb-2.5">
-                        <span class="font-semibold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5 text-xs">
-                            <i data-lucide="key-round" class="w-3.5 h-3.5"></i>
-                            <span>Default Credentials</span>
-                        </span>
-                        <button type="button" id="fillDemoBtn"
-                            class="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 bg-white dark:bg-emerald-500/20 hover:bg-zinc-50 dark:hover:bg-emerald-500/30 px-2 py-0.5 rounded-md border border-emerald-500/20 transition-all cursor-pointer shadow-2xs active:scale-95">
-                            <i data-lucide="sparkles" class="w-3 h-3 text-emerald-600 dark:text-emerald-400"></i>
-                            <span id="fillDemoText">Auto-fill</span>
-                        </button>
-                    </div>
-
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 font-mono text-[11px]">
-                        <!-- Email Pill -->
-                        <div role="button" tabindex="0" onclick="fillCredential('admin@passwire.local', null)"
-                            title="Click to copy & fill email"
-                            class="group/c cursor-pointer bg-white dark:bg-black/30 p-2 rounded-lg border border-zinc-200 dark:border-white/[0.06] hover:border-emerald-500/40 dark:hover:border-emerald-500/40 transition-all flex items-center justify-between gap-1 shadow-2xs">
-                            <div class="min-w-0 pr-1">
-                                <div class="text-[9px] uppercase font-sans text-zinc-500 dark:text-zinc-500 font-bold tracking-wider mb-0.5">Email</div>
-                                <div class="truncate select-all text-zinc-900 dark:text-zinc-200 font-medium">admin@passwire.local</div>
-                            </div>
-                            <i data-lucide="copy" class="w-3 h-3 text-zinc-400 group-hover/c:text-emerald-500 transition-colors flex-shrink-0"></i>
-                        </div>
-
-                        <!-- Password Pill -->
-                        <div role="button" tabindex="0" onclick="fillCredential(null, 'password')"
-                            title="Click to copy & fill password"
-                            class="group/c cursor-pointer bg-white dark:bg-black/30 p-2 rounded-lg border border-zinc-200 dark:border-white/[0.06] hover:border-emerald-500/40 dark:hover:border-emerald-500/40 transition-all flex items-center justify-between gap-1 shadow-2xs">
-                            <div class="min-w-0 pr-1">
-                                <div class="text-[9px] uppercase font-sans text-zinc-500 dark:text-zinc-500 font-bold tracking-wider mb-0.5">Password</div>
-                                <div class="select-all text-zinc-900 dark:text-zinc-200 font-medium">password</div>
-                            </div>
-                            <i data-lucide="copy" class="w-3 h-3 text-zinc-400 group-hover/c:text-emerald-500 transition-colors flex-shrink-0"></i>
-                        </div>
-                    </div>
-
-                    <p class="text-[11px] text-zinc-500 dark:text-zinc-400 mt-2 font-sans flex items-center gap-1.5">
-                        <i data-lucide="info" class="w-3 h-3 text-emerald-600 dark:text-emerald-400 flex-shrink-0"></i>
-                        <span>Pre-configured during setup. Click <b>Auto-fill</b> to quickly sign in.</span>
-                    </p>
-                </div>
+                <button type="button" @click="switchMode('register')"
+                    :class="mode === 'register' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm font-semibold' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 font-medium'"
+                    class="flex-1 py-2 text-xs rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer">
+                    <i data-lucide="user-plus" class="w-3.5 h-3.5"></i>
+                    <span>Create Account</span>
+                </button>
             </div>
-            @endif
+
+            <!-- Sign In Form Panel -->
+            <div x-show="mode === 'login'">
+                <form id="loginForm" method="POST" action="{{ route('login') }}" class="space-y-4" novalidate>
+                    @csrf
+                    <input type="hidden" name="action" value="login">
+
+                    <div>
+                        <label for="email" class="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">Admin Email</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-500">
+                                <i data-lucide="mail" class="w-4 h-4"></i>
+                            </div>
+                            <input type="email" id="email" name="email" value="{{ old('email') }}" autofocus
+                                placeholder="admin@example.com"
+                                class="w-full bg-[#09090b] border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-colors">
+                        </div>
+                        <p id="emailError" class="hidden mt-1.5 text-xs text-rose-400 flex items-center gap-1.5"></p>
+                    </div>
+
+                    <div>
+                        <label for="password" class="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">Password</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-500">
+                                <i data-lucide="lock" class="w-4 h-4"></i>
+                            </div>
+                            <input type="password" id="password" name="password"
+                                placeholder="••••••••"
+                                class="w-full bg-[#09090b] border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-colors">
+                        </div>
+                        <p id="passwordError" class="hidden mt-1.5 text-xs text-rose-400 flex items-center gap-1.5"></p>
+                    </div>
+
+                    <div class="flex items-center text-xs pt-1">
+                        <label class="flex items-center gap-2 text-zinc-400 cursor-pointer select-none">
+                            <input type="checkbox" name="remember" value="1" checked class="rounded border-white/10 bg-[#09090b] text-emerald-500 focus:ring-emerald-500/30">
+                            <span>Remember session</span>
+                        </label>
+                    </div>
+
+                    <button type="submit"
+                        style="background-color: #10b981 !important; color: #ffffff !important;"
+                        onmouseover="this.style.backgroundColor='#34d399'"
+                        onmouseout="this.style.backgroundColor='#10b981'"
+                        class="btn-primary w-full py-2.5 px-4 text-white font-semibold rounded-xl text-sm tracking-wide shadow-md transition-all duration-150 transform active:scale-[0.99] flex items-center justify-center gap-2 mt-2 cursor-pointer">
+                        <span style="color: #ffffff !important;">Sign In</span>
+                        <i data-lucide="arrow-right" class="w-4 h-4" style="color: #ffffff !important;"></i>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Create Account Form Panel -->
+            <div x-show="mode === 'register'" x-cloak>
+                <form id="registerForm" method="POST" action="{{ route('register') }}" class="space-y-4" novalidate>
+                    @csrf
+                    <input type="hidden" name="action" value="register">
+
+                    <div>
+                        <label for="reg_name" class="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">Admin Name</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-500">
+                                <i data-lucide="user" class="w-4 h-4"></i>
+                            </div>
+                            <input type="text" id="reg_name" name="name" value="{{ old('name') }}"
+                                placeholder="e.g. Alex Vance"
+                                class="w-full bg-[#09090b] border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-colors">
+                        </div>
+                        <p id="regNameError" class="hidden mt-1.5 text-xs text-rose-400 flex items-center gap-1.5"></p>
+                    </div>
+
+                    <div>
+                        <label for="reg_email" class="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">Admin Email</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-500">
+                                <i data-lucide="mail" class="w-4 h-4"></i>
+                            </div>
+                            <input type="email" id="reg_email" name="email" value="{{ old('email') }}"
+                                placeholder="admin@example.com"
+                                class="w-full bg-[#09090b] border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-colors">
+                        </div>
+                        <p id="regEmailError" class="hidden mt-1.5 text-xs text-rose-400 flex items-center gap-1.5"></p>
+                    </div>
+
+                    <div>
+                        <label for="reg_password" class="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">Password</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-500">
+                                <i data-lucide="lock" class="w-4 h-4"></i>
+                            </div>
+                            <input type="password" id="reg_password" name="password"
+                                placeholder="Minimum 8 characters"
+                                class="w-full bg-[#09090b] border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-colors">
+                        </div>
+                        <p id="regPasswordError" class="hidden mt-1.5 text-xs text-rose-400 flex items-center gap-1.5"></p>
+                    </div>
+
+                    <div>
+                        <label for="reg_password_confirmation" class="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">Confirm Password</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-500">
+                                <i data-lucide="shield-check" class="w-4 h-4"></i>
+                            </div>
+                            <input type="password" id="reg_password_confirmation" name="password_confirmation"
+                                placeholder="Repeat password"
+                                class="w-full bg-[#09090b] border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-colors">
+                        </div>
+                        <p id="regPasswordConfirmationError" class="hidden mt-1.5 text-xs text-rose-400 flex items-center gap-1.5"></p>
+                    </div>
+
+                    <div class="flex items-center text-xs pt-1">
+                        <label class="flex items-center gap-2 text-zinc-400 cursor-pointer select-none">
+                            <input type="checkbox" name="remember" value="1" checked class="rounded border-white/10 bg-[#09090b] text-emerald-500 focus:ring-emerald-500/30">
+                            <span>Remember session</span>
+                        </label>
+                    </div>
+
+                    <button type="submit"
+                        style="background-color: #10b981 !important; color: #ffffff !important;"
+                        onmouseover="this.style.backgroundColor='#34d399'"
+                        onmouseout="this.style.backgroundColor='#10b981'"
+                        class="btn-primary w-full py-2.5 px-4 text-white font-semibold rounded-xl text-sm tracking-wide shadow-md transition-all duration-150 transform active:scale-[0.99] flex items-center justify-center gap-2 mt-2 cursor-pointer">
+                        <span style="color: #ffffff !important;">Create Account</span>
+                        <i data-lucide="arrow-right" class="w-4 h-4" style="color: #ffffff !important;"></i>
+                    </button>
+                </form>
+            </div>
         </div>
     </div>
 
 <script>
 (function() {
-    const form = document.getElementById('loginForm');
-    if (!form) return;
-
-    const email = document.getElementById('email');
-    const password = document.getElementById('password');
-    const emailError = document.getElementById('emailError');
-    const passwordError = document.getElementById('passwordError');
-
     const errorBorder = ['border-rose-500', 'focus:border-rose-500', 'focus:ring-rose-500/30'];
     const okBorder = ['border-white/10', 'focus:border-emerald-500'];
 
     function showError(input, box, message) {
+        if (!input || !box) return;
         box.textContent = message;
         box.classList.remove('hidden');
         input.classList.remove(...okBorder);
@@ -305,89 +353,158 @@
     }
 
     function clearError(input, box) {
+        if (!input || !box) return;
         box.textContent = '';
         box.classList.add('hidden');
         input.classList.remove(...errorBorder);
         input.classList.add(...okBorder);
     }
 
-    function validateEmail(showMsg = true) {
-        const value = email.value.trim();
-        if (!value) {
-            if (showMsg) showError(email, emailError, 'Email is required.');
-            return false;
+    // Login Form Validation
+    const loginForm = document.getElementById('loginForm');
+    if (loginForm) {
+        const email = document.getElementById('email');
+        const password = document.getElementById('password');
+        const emailError = document.getElementById('emailError');
+        const passwordError = document.getElementById('passwordError');
+
+        function validateEmail(showMsg = true) {
+            const value = email.value.trim();
+            if (!value) {
+                if (showMsg) showError(email, emailError, 'Email is required.');
+                return false;
+            }
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+                if (showMsg) showError(email, emailError, 'Enter a valid email address.');
+                return false;
+            }
+            clearError(email, emailError);
+            return true;
         }
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-            if (showMsg) showError(email, emailError, 'Enter a valid email address.');
-            return false;
+
+        function validatePassword(showMsg = true) {
+            if (!password.value) {
+                if (showMsg) showError(password, passwordError, 'Password is required.');
+                return false;
+            }
+            clearError(password, passwordError);
+            return true;
         }
-        clearError(email, emailError);
-        return true;
+
+        if (email) {
+            email.addEventListener('input', () => validateEmail(email.value.trim() !== '' || !emailError.classList.contains('hidden')));
+            email.addEventListener('blur', () => { if (email.value.trim() !== '' || !emailError.classList.contains('hidden')) validateEmail(true); });
+        }
+        if (password) {
+            password.addEventListener('input', () => validatePassword(password.value !== '' || !passwordError.classList.contains('hidden')));
+            password.addEventListener('blur', () => { if (password.value !== '' || !passwordError.classList.contains('hidden')) validatePassword(true); });
+        }
+
+        loginForm.addEventListener('submit', function(e) {
+            const emailOk = validateEmail(true);
+            const passOk = validatePassword(true);
+            if (!emailOk || !passOk) {
+                e.preventDefault();
+                (emailOk ? password : email).focus();
+                return false;
+            }
+        });
     }
 
-    function validatePassword(showMsg = true) {
-        if (!password.value) {
-            if (showMsg) showError(password, passwordError, 'Password is required.');
-            return false;
-        }
-        if (password.value.length < 1) {
-            if (showMsg) showError(password, passwordError, 'Password is required.');
-            return false;
-        }
-        clearError(password, passwordError);
-        return true;
-    }
+    // Register Form Validation
+    const registerForm = document.getElementById('registerForm');
+    if (registerForm) {
+        const regName = document.getElementById('reg_name');
+        const regEmail = document.getElementById('reg_email');
+        const regPassword = document.getElementById('reg_password');
+        const regPasswordConfirmation = document.getElementById('reg_password_confirmation');
+        const regNameError = document.getElementById('regNameError');
+        const regEmailError = document.getElementById('regEmailError');
+        const regPasswordError = document.getElementById('regPasswordError');
+        const regPasswordConfirmationError = document.getElementById('regPasswordConfirmationError');
 
-    // Validate immediately on typing / leaving the field
-    email.addEventListener('input', () => validateEmail(email.value.trim() !== '' || !emailError.classList.contains('hidden')));
-    email.addEventListener('blur', () => { if (email.value.trim() !== '' || !emailError.classList.contains('hidden')) validateEmail(true); });
-    password.addEventListener('input', () => validatePassword(password.value !== '' || !passwordError.classList.contains('hidden')));
-    password.addEventListener('blur', () => { if (password.value !== '' || !passwordError.classList.contains('hidden')) validatePassword(true); });
-
-    // Submit via JavaScript: block submit + show required messages immediately
-    form.addEventListener('submit', function(e) {
-        const emailOk = validateEmail(true);
-        const passOk = validatePassword(true);
-        if (!emailOk || !passOk) {
-            e.preventDefault();
-            (emailOk ? password : email).focus();
-            return false;
-        }
-        form.submit();
-    });
-
-    window.fillCredential = function(em, pw) {
-        if (em) {
-            email.value = em;
-            clearError(email, emailError);
-            if (navigator.clipboard) {
-                navigator.clipboard.writeText(em).catch(() => {});
+        function validateRegName(showMsg = true) {
+            const value = regName.value.trim();
+            if (!value) {
+                if (showMsg) showError(regName, regNameError, 'Name is required.');
+                return false;
             }
+            clearError(regName, regNameError);
+            return true;
         }
-        if (pw) {
-            password.value = pw;
-            clearError(password, passwordError);
-            if (navigator.clipboard) {
-                navigator.clipboard.writeText(pw).catch(() => {});
-            }
-        }
-    };
 
-    const fillDemoBtn = document.getElementById('fillDemoBtn');
-    const fillDemoText = document.getElementById('fillDemoText');
-    if (fillDemoBtn) {
-        fillDemoBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            email.value = 'admin@passwire.local';
-            password.value = 'password';
-            clearError(email, emailError);
-            clearError(password, passwordError);
-            if (fillDemoText) {
-                const prev = fillDemoText.textContent;
-                fillDemoText.textContent = 'Filled!';
-                setTimeout(() => {
-                    fillDemoText.textContent = prev;
-                }, 1500);
+        function validateRegEmail(showMsg = true) {
+            const value = regEmail.value.trim();
+            if (!value) {
+                if (showMsg) showError(regEmail, regEmailError, 'Email is required.');
+                return false;
+            }
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+                if (showMsg) showError(regEmail, regEmailError, 'Enter a valid email address.');
+                return false;
+            }
+            clearError(regEmail, regEmailError);
+            return true;
+        }
+
+        function validateRegPassword(showMsg = true) {
+            if (!regPassword.value) {
+                if (showMsg) showError(regPassword, regPasswordError, 'Password is required.');
+                return false;
+            }
+            if (regPassword.value.length < 8) {
+                if (showMsg) showError(regPassword, regPasswordError, 'Password must be at least 8 characters.');
+                return false;
+            }
+            clearError(regPassword, regPasswordError);
+            return true;
+        }
+
+        function validateRegPasswordConfirmation(showMsg = true) {
+            if (!regPasswordConfirmation.value) {
+                if (showMsg) showError(regPasswordConfirmation, regPasswordConfirmationError, 'Please confirm your password.');
+                return false;
+            }
+            if (regPasswordConfirmation.value !== regPassword.value) {
+                if (showMsg) showError(regPasswordConfirmation, regPasswordConfirmationError, 'Passwords do not match.');
+                return false;
+            }
+            clearError(regPasswordConfirmation, regPasswordConfirmationError);
+            return true;
+        }
+
+        if (regName) {
+            regName.addEventListener('input', () => validateRegName(regName.value.trim() !== '' || !regNameError.classList.contains('hidden')));
+            regName.addEventListener('blur', () => { if (regName.value.trim() !== '' || !regNameError.classList.contains('hidden')) validateRegName(true); });
+        }
+        if (regEmail) {
+            regEmail.addEventListener('input', () => validateRegEmail(regEmail.value.trim() !== '' || !regEmailError.classList.contains('hidden')));
+            regEmail.addEventListener('blur', () => { if (regEmail.value.trim() !== '' || !regEmailError.classList.contains('hidden')) validateRegEmail(true); });
+        }
+        if (regPassword) {
+            regPassword.addEventListener('input', () => {
+                validateRegPassword(regPassword.value !== '' || !regPasswordError.classList.contains('hidden'));
+                if (regPasswordConfirmation.value) validateRegPasswordConfirmation(true);
+            });
+            regPassword.addEventListener('blur', () => { if (regPassword.value !== '' || !regPasswordError.classList.contains('hidden')) validateRegPassword(true); });
+        }
+        if (regPasswordConfirmation) {
+            regPasswordConfirmation.addEventListener('input', () => validateRegPasswordConfirmation(regPasswordConfirmation.value !== '' || !regPasswordConfirmationError.classList.contains('hidden')));
+            regPasswordConfirmation.addEventListener('blur', () => { if (regPasswordConfirmation.value !== '' || !regPasswordConfirmationError.classList.contains('hidden')) validateRegPasswordConfirmation(true); });
+        }
+
+        registerForm.addEventListener('submit', function(e) {
+            const nameOk = validateRegName(true);
+            const emailOk = validateRegEmail(true);
+            const passOk = validateRegPassword(true);
+            const passConfOk = validateRegPasswordConfirmation(true);
+            if (!nameOk || !emailOk || !passOk || !passConfOk) {
+                e.preventDefault();
+                if (!nameOk) regName.focus();
+                else if (!emailOk) regEmail.focus();
+                else if (!passOk) regPassword.focus();
+                else regPasswordConfirmation.focus();
+                return false;
             }
         });
     }

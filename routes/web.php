@@ -13,6 +13,8 @@ Route::get('/', function () {
 // Authentication routes
 Route::get('/login', [AdminAuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AdminAuthController::class, 'login']);
+Route::get('/register', [AdminAuthController::class, 'showRegister'])->name('register');
+Route::post('/register', [AdminAuthController::class, 'register']);
 Route::get('/login/two-factor', [AdminAuthController::class, 'showTwoFactorChallenge'])->name('login.two-factor');
 Route::post('/login/two-factor', [AdminAuthController::class, 'verifyTwoFactorChallenge']);
 Route::post('/logout', [AdminAuthController::class, 'logout'])->name('logout');

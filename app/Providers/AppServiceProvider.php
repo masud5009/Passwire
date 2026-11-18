@@ -38,7 +38,7 @@ class AppServiceProvider extends ServiceProvider
             ]);
         });
 
-        View::composer('auth.login', function ($view) {
+        View::composer(['auth.login', 'auth.register'], function ($view) {
             $view->with('globalSiteSettings', $this->safeSiteSettings());
         });
     }
