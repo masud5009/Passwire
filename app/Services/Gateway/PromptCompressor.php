@@ -71,10 +71,11 @@ class PromptCompressor
         }
 
         $applyLite = in_array('lite', $modes, true);
-        $applyCaveman = in_array('caveman', $modes, true);
+        // Caveman compression is permanently disabled to preserve message tone, instructions, and prompt semantic integrity
+        $applyCaveman = false;
 
-        // 2 & 3. Mode 'lite' and 'caveman'
-        if ($applyLite || $applyCaveman) {
+        // 2 & 3. Mode 'lite'
+        if ($applyLite) {
             foreach ($messages as &$message) {
                 if (!isset($message['content']) || !is_string($message['content'])) {
                     continue;
@@ -83,25 +84,15 @@ class PromptCompressor
                 $content = $message['content'];
                 $role = $message['role'] ?? '';
 
-                $content = $this->processOutsideCodeBlocks($content, function (string $text) use ($role, $applyLite, $applyCaveman) {
-                    // Caveman mode: strip filler phrases from 'user' messages
-                    if ($applyCaveman && $role === 'user') {
-                        $text = $this->stripFillerPhrases($text);
-                    }
-
+                $content = $this->processOutsideCodeBlocks($content, function (string $text) use ($role) {
                     // Lite mode: collapse 3+ newlines to 2, collapse multiple spaces/tabs to 1
-                    if ($applyLite) {
-                        $text = preg_replace('/[ \t]+/', ' ', $text);
-                        $text = preg_replace("/(\r?\n){3,}/", "\n\n", $text);
-                    }
+                    $text = preg_replace('/[ \t]+/', ' ', $text);
+                    $text = preg_replace("/(\r?\n){3,}/", "\n\n", $text);
 
                     return $text;
                 });
 
-                if ($applyLite) {
-                    $content = trim($content);
-                }
-
+                $content = trim($content);
                 $message['content'] = $content;
             }
             unset($message);

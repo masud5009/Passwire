@@ -219,7 +219,7 @@
 
                     <div>
                         <label class="block text-xs font-semibold uppercase tracking-wider text-zinc-600 dark:text-zinc-400 mb-2">Prompt Compression & Privacy Guardrails</label>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-zinc-700 dark:text-zinc-300">
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs text-zinc-700 dark:text-zinc-300">
                             <label class="flex items-center gap-2 bg-zinc-50 dark:bg-[#09090b] border border-zinc-200 dark:border-white/5 px-3 py-2 rounded-xl cursor-pointer hover:border-zinc-300 dark:hover:border-white/10">
                                 <input type="checkbox" name="compression_modes[]" value="dedup" checked class="rounded border-zinc-300 dark:border-white/10 text-emerald-500 focus:ring-emerald-500">
                                 <span><strong>dedup</strong>: Deduplicate repeated system messages</span>
@@ -227,10 +227,6 @@
                             <label class="flex items-center gap-2 bg-zinc-50 dark:bg-[#09090b] border border-zinc-200 dark:border-white/5 px-3 py-2 rounded-xl cursor-pointer hover:border-zinc-300 dark:hover:border-white/10">
                                 <input type="checkbox" name="compression_modes[]" value="lite" checked class="rounded border-zinc-300 dark:border-white/10 text-emerald-500 focus:ring-emerald-500">
                                 <span><strong>lite</strong>: Collapse 3+ newlines & spaces</span>
-                            </label>
-                            <label class="flex items-center gap-2 bg-zinc-50 dark:bg-[#09090b] border border-zinc-200 dark:border-white/5 px-3 py-2 rounded-xl cursor-pointer hover:border-zinc-300 dark:hover:border-white/10">
-                                <input type="checkbox" name="compression_modes[]" value="caveman" class="rounded border-zinc-300 dark:border-white/10 text-emerald-500 focus:ring-emerald-500">
-                                <span><strong>caveman</strong>: Strip conversational filler</span>
                             </label>
                             <label class="flex items-center gap-2 bg-zinc-50 dark:bg-[#09090b] border border-purple-500/20 px-3 py-2 rounded-xl cursor-pointer hover:border-purple-500/40">
                                 <input type="checkbox" name="compression_modes[]" value="pii" checked class="rounded border-zinc-300 dark:border-white/10 text-purple-500 focus:ring-purple-500">

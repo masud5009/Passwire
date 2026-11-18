@@ -414,12 +414,16 @@ class OmniRouterService
                         );
                     }
 
+                    $cachedPromptTokens = (int) ($normalizedData['usage']['prompt_tokens_details']['cached_tokens'] ?? 0);
+
                     $costData = $this->costCalculator->calculate(
                         $modelName,
                         $promptTokens,
                         $completionTokens,
                         $savedTokens,
-                        false
+                        false,
+                        $cachedPromptTokens,
+                        $providerSlug
                     );
 
                     // Record successful GatewayLog asynchronously via queue
@@ -449,6 +453,7 @@ class OmniRouterService
                             'model' => $modelName,
                             'account' => $account->label,
                             'saved_tokens' => $savedTokens,
+                            'cached_prompt_tokens' => $cachedPromptTokens,
                             'cost_usd' => $costData['cost_usd'],
                             'cost_saved_usd' => $costData['cost_saved_usd'],
                             'latency_ms' => $latencyMs,
@@ -597,6 +602,76 @@ class OmniRouterService
             }
         } else {
             $cleanInput = (string) $input;
+        }
+
+        // 3.5 Check Embeddings Response Cache
+        $cachePayload = $payload;
+        $cachePayload['input'] = $cleanInput;
+        $cachePayload['model'] = $requestedModel;
+
+        $isCacheable = $this->cacheService->isEmbeddingCacheable($cachePayload);
+        $cacheKey = $isCacheable ? $this->cacheService->generateEmbeddingKey($cachePayload, $gatewayKey) : null;
+
+        if ($cacheKey) {
+            $cachedEntry = $this->cacheService->getEmbedding($cacheKey);
+            if ($cachedEntry !== null) {
+                // Settle reservation for cache hit (0 tokens actually consumed)
+                if ($gatewayKey && $reservedTokens > 0) {
+                    \App\Http\Middleware\EnforceGatewayRateLimits::settleDailyTokens(
+                        $gatewayKey,
+                        $reservedTokens,
+                        0
+                    );
+                }
+
+                $cacheLatencyMs = max(1, (int) round((microtime(true) - $overallStartTime) * 1000));
+                $cachedResponse = $cachedEntry['response'] ?? [];
+                $cachedMeta = $cachedEntry['meta'] ?? [];
+
+                $promptTokens = (int) ($cachedResponse['usage']['prompt_tokens'] ?? 0);
+                $totalTokens = (int) ($cachedResponse['usage']['total_tokens'] ?? $promptTokens);
+
+                $costData = $this->costCalculator->calculate(
+                    $cachedMeta['model'] ?? $requestedModel,
+                    $promptTokens,
+                    0,
+                    $promptTokens,
+                    true
+                );
+
+                // Record cached GatewayLog entry asynchronously via queue
+                GatewayLog::record([
+                    'gateway_key_id' => $gatewayKey?->id,
+                    'requested_model' => $requestedModel,
+                    'routed_provider' => $cachedMeta['provider'] ?? 'cache',
+                    'routed_model' => $cachedMeta['model'] ?? $requestedModel,
+                    'account_label' => 'cache-hit',
+                    'prompt_tokens' => $promptTokens,
+                    'completion_tokens' => 0,
+                    'total_tokens' => $totalTokens,
+                    'saved_tokens' => $totalTokens,
+                    'cost_usd' => 0.0,
+                    'cost_saved_usd' => $costData['cost_saved_usd'],
+                    'latency_ms' => $cacheLatencyMs,
+                    'status_code' => 200,
+                    'is_cached' => true,
+                    'redacted_pii_count' => $redactedPiiCount,
+                    'error_message' => null,
+                ]);
+
+                return [
+                    'response' => $cachedResponse,
+                    'meta' => array_merge($cachedMeta, [
+                        'cached' => true,
+                        'cache_hit' => true,
+                        'saved_tokens' => $totalTokens,
+                        'cost_usd' => 0.0,
+                        'cost_saved_usd' => $costData['cost_saved_usd'],
+                        'latency_ms' => $cacheLatencyMs,
+                        'redacted_pii_count' => $redactedPiiCount,
+                    ]),
+                ];
+            }
         }
 
         $attemptErrors = [];
@@ -767,6 +842,20 @@ class OmniRouterService
                         'redacted_pii_count' => $redactedPiiCount,
                         'error_message' => null,
                     ]);
+
+                    // Store response in embeddings cache if cacheable
+                    if ($cacheKey && !empty($normalizedData['data'])) {
+                        $this->cacheService->putEmbedding($cacheKey, $normalizedData, [
+                            'provider' => $providerSlug,
+                            'model' => $modelName,
+                            'account' => $account->label,
+                            'saved_tokens' => 0,
+                            'cost_usd' => $costData['cost_usd'],
+                            'cost_saved_usd' => 0,
+                            'latency_ms' => $latencyMs,
+                            'redacted_pii_count' => $redactedPiiCount,
+                        ]);
+                    }
 
                     return [
                         'response' => $normalizedData,

@@ -339,6 +339,19 @@ class GeminiAdapter implements ProviderAdapterInterface
         $promptTokens = (int) ($usage['promptTokenCount'] ?? 0);
         $completionTokens = (int) ($usage['candidatesTokenCount'] ?? 0);
         $totalTokens = (int) ($usage['totalTokenCount'] ?? ($promptTokens + $completionTokens));
+        $cachedTokens = (int) ($usage['cachedContentTokenCount'] ?? 0);
+
+        $usageNormalized = [
+            'prompt_tokens' => $promptTokens,
+            'completion_tokens' => $completionTokens,
+            'total_tokens' => $totalTokens,
+        ];
+
+        if ($cachedTokens > 0) {
+            $usageNormalized['prompt_tokens_details'] = [
+                'cached_tokens' => $cachedTokens,
+            ];
+        }
 
         $message = [
             'role' => 'assistant',
@@ -361,11 +374,7 @@ class GeminiAdapter implements ProviderAdapterInterface
                     'finish_reason' => $finishReason,
                 ]
             ],
-            'usage' => [
-                'prompt_tokens' => $promptTokens,
-                'completion_tokens' => $completionTokens,
-                'total_tokens' => $totalTokens,
-            ],
+            'usage' => $usageNormalized,
         ];
     }
 

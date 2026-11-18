@@ -104,10 +104,19 @@ class CostCalculatorService
      * @param int $completionTokens
      * @param int $savedTokens
      * @param bool $isCached
+     * @param int $cachedPromptTokens
+     * @param string|null $provider
      * @return array{cost_usd: float, cost_saved_usd: float, input_rate: float, output_rate: float}
      */
-    public function calculate(string $model, int $promptTokens, int $completionTokens, int $savedTokens = 0, bool $isCached = false): array
-    {
+    public function calculate(
+        string $model,
+        int $promptTokens,
+        int $completionTokens,
+        int $savedTokens = 0,
+        bool $isCached = false,
+        int $cachedPromptTokens = 0,
+        ?string $provider = null
+    ): array {
         $pricing = $this->getPricingForModel($model);
         $inputRate = $pricing['input'];
         $outputRate = $pricing['output'];
@@ -124,14 +133,27 @@ class CostCalculatorService
         }
 
         // Live API call: calculate actual money spent
-        $actualCost = ($promptTokens * $inputRate / 1_000_000) + ($completionTokens * $outputRate / 1_000_000);
+        // Anthropic provides 90% discount on cached input tokens; OpenAI/Gemini provide 50% discount
+        $isAnthropic = ($provider === 'anthropic') || str_contains(strtolower($model), 'claude');
+        $cacheMultiplier = $isAnthropic ? 0.10 : 0.50;
 
-        // Savings from prompt compression (input tokens that were eliminated before hitting upstream)
+        $cachedTokensCount = min($promptTokens, max(0, $cachedPromptTokens));
+        $nonCachedPromptTokens = max(0, $promptTokens - $cachedTokensCount);
+
+        $promptCost = ($nonCachedPromptTokens * $inputRate / 1_000_000) + ($cachedTokensCount * ($inputRate * $cacheMultiplier) / 1_000_000);
+        $actualCost = $promptCost + ($completionTokens * $outputRate / 1_000_000);
+
+        // Savings from prompt compression (input tokens eliminated before upstream)
         $compressionSavedCost = ($savedTokens * $inputRate / 1_000_000);
+
+        // Savings from provider-native prompt caching (discount applied on cached input tokens)
+        $promptCacheSavedCost = ($cachedTokensCount * ($inputRate * (1.0 - $cacheMultiplier)) / 1_000_000);
+
+        $totalSavedCost = $compressionSavedCost + $promptCacheSavedCost;
 
         return [
             'cost_usd' => round($actualCost, 6),
-            'cost_saved_usd' => round($compressionSavedCost, 6),
+            'cost_saved_usd' => round($totalSavedCost, 6),
             'input_rate' => $inputRate,
             'output_rate' => $outputRate,
         ];

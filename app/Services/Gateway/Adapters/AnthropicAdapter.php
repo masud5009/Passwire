@@ -24,6 +24,7 @@ class AnthropicAdapter implements ProviderAdapterInterface
         return [
             'x-api-key' => $apiKey,
             'anthropic-version' => '2023-06-01',
+            'anthropic-beta' => 'prompt-caching-2024-07-31',
             'Content-Type' => 'application/json',
             'Accept' => $isStream ? 'text/event-stream' : 'application/json',
         ];
@@ -34,6 +35,7 @@ class AnthropicAdapter implements ProviderAdapterInterface
         return [
             'x-api-key: ' . $apiKey,
             'anthropic-version: 2023-06-01',
+            'anthropic-beta: prompt-caching-2024-07-31',
             'Content-Type: application/json',
             'Accept: ' . ($isStream ? 'text/event-stream' : 'application/json'),
         ];
@@ -173,7 +175,18 @@ class AnthropicAdapter implements ProviderAdapterInterface
         ];
 
         if (!empty($systemParts)) {
-            $payload['system'] = implode("\n\n", array_filter($systemParts));
+            $systemText = implode("\n\n", array_filter($systemParts));
+            if ($this->isPromptCachingEnabled() && mb_strlen($systemText) >= 500) {
+                $payload['system'] = [
+                    [
+                        'type' => 'text',
+                        'text' => $systemText,
+                        'cache_control' => ['type' => 'ephemeral'],
+                    ],
+                ];
+            } else {
+                $payload['system'] = $systemText;
+            }
         }
 
         if (isset($openaiPayload['temperature'])) {
@@ -213,6 +226,11 @@ class AnthropicAdapter implements ProviderAdapterInterface
             }
 
             if (!empty($anthropicTools)) {
+                if ($this->isPromptCachingEnabled()) {
+                    $lastIdx = count($anthropicTools) - 1;
+                    $anthropicTools[$lastIdx]['cache_control'] = ['type' => 'ephemeral'];
+                }
+
                 $payload['tools'] = $anthropicTools;
 
                 if (isset($openaiPayload['tool_choice'])) {
@@ -274,8 +292,27 @@ class AnthropicAdapter implements ProviderAdapterInterface
             default => !empty($toolCalls) ? 'tool_calls' : 'stop',
         };
 
-        $promptTokens = (int) ($rawResponse['usage']['input_tokens'] ?? 0);
+        $inputTokens = (int) ($rawResponse['usage']['input_tokens'] ?? 0);
         $completionTokens = (int) ($rawResponse['usage']['output_tokens'] ?? 0);
+        $cachedTokens = (int) ($rawResponse['usage']['cache_read_input_tokens'] ?? 0);
+        $cacheCreationTokens = (int) ($rawResponse['usage']['cache_creation_input_tokens'] ?? 0);
+
+        // In Anthropic API, input_tokens is non-cached tokens.
+        // Total prompt tokens represents total context sent to model
+        $promptTokens = $inputTokens + $cachedTokens + $cacheCreationTokens;
+        $totalTokens = $promptTokens + $completionTokens;
+
+        $usage = [
+            'prompt_tokens' => $promptTokens,
+            'completion_tokens' => $completionTokens,
+            'total_tokens' => $totalTokens,
+        ];
+
+        if ($cachedTokens > 0) {
+            $usage['prompt_tokens_details'] = [
+                'cached_tokens' => $cachedTokens,
+            ];
+        }
 
         $message = [
             'role' => 'assistant',
@@ -298,11 +335,7 @@ class AnthropicAdapter implements ProviderAdapterInterface
                     'finish_reason' => $finishReason,
                 ],
             ],
-            'usage' => [
-                'prompt_tokens' => $promptTokens,
-                'completion_tokens' => $completionTokens,
-                'total_tokens' => $promptTokens + $completionTokens,
-            ],
+            'usage' => $usage,
         ];
     }
 
@@ -456,5 +489,17 @@ class AnthropicAdapter implements ProviderAdapterInterface
         }
 
         return null;
+    }
+
+    /**
+     * Determine if upstream provider prompt caching is enabled.
+     */
+    protected function isPromptCachingEnabled(): bool
+    {
+        if (function_exists('config') && function_exists('app') && app()->bound('config')) {
+            return (bool) config('gateway.provider_prompt_caching', true);
+        }
+
+        return true;
     }
 }

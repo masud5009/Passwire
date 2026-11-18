@@ -262,16 +262,24 @@ class GatewayController extends Controller
             $result = $this->router->dispatchEmbeddingSync($payload, $gatewayKey, $reservedTokens);
 
             return response()->json($result['response'], 200, [
+                // Passwire Standard Headers
+                'X-Passwire-Cache' => !empty($result['meta']['cached']) ? 'HIT' : 'MISS',
                 'X-Passwire-Provider' => $result['meta']['provider'] ?? '',
                 'X-Passwire-Model' => $result['meta']['model'] ?? '',
                 'X-Passwire-Account' => $result['meta']['account'] ?? '',
+                'X-Passwire-Saved-Tokens' => (string) ($result['meta']['saved_tokens'] ?? 0),
                 'X-Passwire-Cost-USD' => (string) ($result['meta']['cost_usd'] ?? 0),
+                'X-Passwire-Cost-Saved-USD' => (string) ($result['meta']['cost_saved_usd'] ?? 0),
                 'X-Passwire-Redacted-PII' => (string) ($result['meta']['redacted_pii_count'] ?? 0),
                 'X-Passwire-Latency-Ms' => (string) ($result['meta']['latency_ms'] ?? 0),
+                // Legacy OmniRoute Headers
+                'X-OmniRoute-Cache' => !empty($result['meta']['cached']) ? 'HIT' : 'MISS',
                 'X-OmniRoute-Provider' => $result['meta']['provider'] ?? '',
                 'X-OmniRoute-Model' => $result['meta']['model'] ?? '',
                 'X-OmniRoute-Account' => $result['meta']['account'] ?? '',
+                'X-OmniRoute-Saved-Tokens' => (string) ($result['meta']['saved_tokens'] ?? 0),
                 'X-OmniRoute-Cost-USD' => (string) ($result['meta']['cost_usd'] ?? 0),
+                'X-OmniRoute-Cost-Saved-USD' => (string) ($result['meta']['cost_saved_usd'] ?? 0),
                 'X-OmniRoute-Redacted-PII' => (string) ($result['meta']['redacted_pii_count'] ?? 0),
                 'X-OmniRoute-Latency-Ms' => (string) ($result['meta']['latency_ms'] ?? 0),
             ]);
@@ -659,10 +667,11 @@ class GatewayController extends Controller
                         $promptTokens = $resolvedTokens['prompt_tokens'];
                         $completionTokens = $resolvedTokens['completion_tokens'];
                         $totalTokens = $resolvedTokens['total_tokens'];
+                        $cachedPromptTokens = $resolvedTokens['cached_prompt_tokens'] ?? 0;
 
                         // Emit usage chunk to client if requested via stream_options.include_usage and not yet emitted
                         if ($clientRequestedUsage && !$usageChunkEmittedToClient) {
-                            echo $this->tokenizer->formatStreamUsageChunk($modelName, $promptTokens, $completionTokens, $totalTokens);
+                            echo $this->tokenizer->formatStreamUsageChunk($modelName, $promptTokens, $completionTokens, $totalTokens, $cachedPromptTokens);
                             if (ob_get_level() > 0) @ob_flush();
                             @flush();
                         }
@@ -684,7 +693,9 @@ class GatewayController extends Controller
                             $promptTokens,
                             $completionTokens,
                             $savedTokens,
-                            false
+                            false,
+                            $cachedPromptTokens,
+                            $providerSlug
                         );
 
                         // Record successful streaming log asynchronously via queue
@@ -717,6 +728,17 @@ class GatewayController extends Controller
                                 $assembledMessage['tool_calls'] = array_values($accumulatedToolCalls);
                             }
 
+                            $assembledUsage = [
+                                'prompt_tokens' => $promptTokens,
+                                'completion_tokens' => $completionTokens,
+                                'total_tokens' => $totalTokens,
+                            ];
+                            if ($cachedPromptTokens > 0) {
+                                $assembledUsage['prompt_tokens_details'] = [
+                                    'cached_tokens' => $cachedPromptTokens,
+                                ];
+                            }
+
                             $assembled = [
                                 'id' => 'chatcmpl-cached-' . bin2hex(random_bytes(6)),
                                 'object' => 'chat.completion',
@@ -729,11 +751,7 @@ class GatewayController extends Controller
                                         'finish_reason' => $streamFinishReason ?? (!empty($accumulatedToolCalls) ? 'tool_calls' : 'stop'),
                                     ]
                                 ],
-                                'usage' => [
-                                    'prompt_tokens' => $promptTokens,
-                                    'completion_tokens' => $completionTokens,
-                                    'total_tokens' => $totalTokens,
-                                ],
+                                'usage' => $assembledUsage,
                             ];
                             $ttl = $this->cacheService->calculateTtl($payload);
                             $this->cacheService->put($cacheKey, $assembled, [

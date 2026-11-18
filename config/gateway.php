@@ -67,5 +67,30 @@ return [
     |
     */
     'async_logging' => (bool) env('GATEWAY_ASYNC_LOGGING', true),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Embeddings Exact-Match Response Caching
+    |--------------------------------------------------------------------------
+    |
+    | Enables byte-for-byte exact-match SHA-256 caching for /v1/embeddings.
+    | Since embedding vectors are deterministic mathematical mappings,
+    | responses can be safely cached for extended periods.
+    |
+    */
+    'embeddings_cache_enabled' => (bool) env('GATEWAY_EMBEDDINGS_CACHE_ENABLED', true),
+    'embeddings_cache_ttl' => (int) env('GATEWAY_EMBEDDINGS_CACHE_TTL', 604800), // 7 days
+
+    /*
+    |--------------------------------------------------------------------------
+    | Upstream Provider-Native Prompt Caching
+    |--------------------------------------------------------------------------
+    |
+    | When enabled, the gateway automatically formats requests for upstream
+    | provider-native prompt caching (Anthropic ephemeral cache_control,
+    | Anthropic beta headers, OpenAI prefix caching, and Gemini context caching).
+    |
+    */
+    'provider_prompt_caching' => (bool) env('GATEWAY_PROVIDER_PROMPT_CACHING', true),
 ];
 

@@ -252,11 +252,21 @@ class TokenizerService
                 if (isset($data['usage']['total_tokens']) && is_numeric($data['usage']['total_tokens'])) {
                     $usageTracker['total_tokens'] = (int) $data['usage']['total_tokens'];
                 }
+                if (isset($data['usage']['prompt_tokens_details']['cached_tokens']) && is_numeric($data['usage']['prompt_tokens_details']['cached_tokens'])) {
+                    $usageTracker['cached_prompt_tokens'] = (int) $data['usage']['prompt_tokens_details']['cached_tokens'];
+                }
             }
         } elseif ($format === 'anthropic') {
-            // Anthropic: message_start gives input_tokens (prompt tokens)
-            if (($data['type'] ?? '') === 'message_start' && isset($data['message']['usage']['input_tokens'])) {
-                $usageTracker['prompt_tokens'] = (int) $data['message']['usage']['input_tokens'];
+            // Anthropic: message_start gives input_tokens (prompt tokens) and cache_read_input_tokens
+            if (($data['type'] ?? '') === 'message_start' && isset($data['message']['usage'])) {
+                $u = $data['message']['usage'];
+                $input = (int) ($u['input_tokens'] ?? 0);
+                $cached = (int) ($u['cache_read_input_tokens'] ?? 0);
+                $creation = (int) ($u['cache_creation_input_tokens'] ?? 0);
+                $usageTracker['prompt_tokens'] = $input + $cached + $creation;
+                if ($cached > 0) {
+                    $usageTracker['cached_prompt_tokens'] = $cached;
+                }
             }
 
             // Anthropic: content_block_delta gives text delta
@@ -299,6 +309,9 @@ class TokenizerService
                 if (isset($data['usageMetadata']['totalTokenCount']) && is_numeric($data['usageMetadata']['totalTokenCount'])) {
                     $usageTracker['total_tokens'] = (int) $data['usageMetadata']['totalTokenCount'];
                 }
+                if (isset($data['usageMetadata']['cachedContentTokenCount']) && is_numeric($data['usageMetadata']['cachedContentTokenCount'])) {
+                    $usageTracker['cached_prompt_tokens'] = (int) $data['usageMetadata']['cachedContentTokenCount'];
+                }
             }
         }
     }
@@ -308,7 +321,7 @@ class TokenizerService
      * - Uses provider-reported usage if available.
      * - Otherwise estimates prompt and completion tokens via tokenizer analysis.
      *
-     * @return array{prompt_tokens: int, completion_tokens: int, total_tokens: int}
+     * @return array{prompt_tokens: int, completion_tokens: int, total_tokens: int, cached_prompt_tokens: int}
      */
     public function resolveStreamTokens(array $usageTracker, array $payload, string $accumulatedText, array $toolCalls = []): array
     {
@@ -327,29 +340,40 @@ class TokenizerService
             $totalTokens = $promptTokens + $completionTokens;
         }
 
+        $cachedPromptTokens = (int) ($usageTracker['cached_prompt_tokens'] ?? 0);
+
         return [
             'prompt_tokens' => max(1, (int) $promptTokens),
             'completion_tokens' => max(1, (int) $completionTokens),
             'total_tokens' => max(1, (int) $totalTokens),
+            'cached_prompt_tokens' => max(0, $cachedPromptTokens),
         ];
     }
 
     /**
      * Format a standard OpenAI streaming usage chunk (emitted when stream_options.include_usage is requested).
      */
-    public function formatStreamUsageChunk(string $model, int $promptTokens, int $completionTokens, int $totalTokens): string
+    public function formatStreamUsageChunk(string $model, int $promptTokens, int $completionTokens, int $totalTokens, int $cachedPromptTokens = 0): string
     {
+        $usage = [
+            'prompt_tokens' => $promptTokens,
+            'completion_tokens' => $completionTokens,
+            'total_tokens' => $totalTokens,
+        ];
+
+        if ($cachedPromptTokens > 0) {
+            $usage['prompt_tokens_details'] = [
+                'cached_tokens' => $cachedPromptTokens,
+            ];
+        }
+
         $chunk = [
             'id' => 'chatcmpl-usage-' . bin2hex(random_bytes(6)),
             'object' => 'chat.completion.chunk',
             'created' => time(),
             'model' => $model,
             'choices' => [],
-            'usage' => [
-                'prompt_tokens' => $promptTokens,
-                'completion_tokens' => $completionTokens,
-                'total_tokens' => $totalTokens,
-            ],
+            'usage' => $usage,
         ];
 
         return 'data: ' . json_encode($chunk, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "\n\n";

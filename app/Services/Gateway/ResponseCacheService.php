@@ -20,9 +20,19 @@ class ResponseCacheService
     public const NON_DETERMINISTIC_TTL = 300;
 
     /**
-     * Cache key prefix.
+     * Default Cache TTL in seconds for embedding requests (7 days).
+     */
+    public const DEFAULT_EMBEDDING_TTL = 604800;
+
+    /**
+     * Cache key prefix for chat completion responses.
      */
     protected const KEY_PREFIX = 'omni_resp_cache:';
+
+    /**
+     * Cache key prefix for embeddings responses.
+     */
+    protected const EMBEDDING_KEY_PREFIX = 'omni_embed_cache:';
 
     /**
      * Determine if a chat completion request payload is eligible for response caching.
@@ -54,6 +64,50 @@ class ResponseCacheService
 
         // Must have non-empty messages
         if (empty($payload['messages']) || !is_array($payload['messages'])) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Determine if an embeddings request payload is eligible for response caching.
+     *
+     * @param array<string, mixed> $payload
+     * @param Request|null $request
+     * @return bool
+     */
+    public function isEmbeddingCacheable(array $payload, ?Request $request = null): bool
+    {
+        $enabled = (function_exists('config') && function_exists('app') && app()->bound('config'))
+            ? config('gateway.embeddings_cache_enabled', true)
+            : true;
+
+        if (!$enabled) {
+            return false;
+        }
+
+        $req = $request ?? (function_exists('request') && app()->bound('request') ? request() : null);
+
+        // Check for client-side explicit bypass headers
+        if ($req instanceof Request) {
+            if ($req->hasHeader('x-bypass-cache') && filter_var($req->header('x-bypass-cache'), FILTER_VALIDATE_BOOLEAN)) {
+                return false;
+            }
+
+            $cacheControl = strtolower($req->header('Cache-Control', ''));
+            if (str_contains($cacheControl, 'no-cache') || str_contains($cacheControl, 'no-store')) {
+                return false;
+            }
+        }
+
+        // Check for payload bypass flag
+        if (!empty($payload['bypass_cache'])) {
+            return false;
+        }
+
+        // Must have non-empty input
+        if (!isset($payload['input']) || $payload['input'] === '' || $payload['input'] === []) {
             return false;
         }
 
@@ -139,6 +193,37 @@ class ResponseCacheService
     }
 
     /**
+     * Generate a deterministic SHA-256 cache key for an embeddings request with tenant isolation.
+     *
+     * @param array<string, mixed> $payload
+     * @param GatewayKey|null $gatewayKey
+     * @return string
+     */
+    public function generateEmbeddingKey(array $payload, ?GatewayKey $gatewayKey = null): string
+    {
+        $tenant = $gatewayKey ? ('gwk_' . $gatewayKey->id) : ($payload['tenant'] ?? ($payload['user'] ?? 'global'));
+
+        $input = $payload['input'] ?? '';
+        if (is_array($input)) {
+            $normalizedInput = array_values(array_map('strval', $input));
+        } else {
+            $normalizedInput = [(string) $input];
+        }
+
+        $normalized = [
+            'tenant' => (string) $tenant,
+            'model' => strtolower(trim($payload['model'] ?? 'text-embedding-3-small')),
+            'input' => $normalizedInput,
+            'dimensions' => isset($payload['dimensions']) ? (int) $payload['dimensions'] : null,
+            'encoding_format' => isset($payload['encoding_format']) ? strtolower(trim((string) $payload['encoding_format'])) : 'float',
+        ];
+
+        $hash = hash('sha256', json_encode($normalized, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+
+        return self::EMBEDDING_KEY_PREFIX . $hash;
+    }
+
+    /**
      * Retrieve cached response if available.
      *
      * @param string $cacheKey
@@ -155,6 +240,17 @@ class ResponseCacheService
 
         $this->incrementMisses();
         return null;
+    }
+
+    /**
+     * Retrieve cached embedding response if available.
+     *
+     * @param string $cacheKey
+     * @return array<string, mixed>|null
+     */
+    public function getEmbedding(string $cacheKey): ?array
+    {
+        return $this->get($cacheKey);
     }
 
     /**
@@ -180,6 +276,24 @@ class ResponseCacheService
     }
 
     /**
+     * Store completed embedding response in cache.
+     *
+     * @param string $cacheKey
+     * @param array<string, mixed> $response
+     * @param array<string, mixed> $meta
+     * @param int|null $ttlSeconds
+     * @return void
+     */
+    public function putEmbedding(string $cacheKey, array $response, array $meta = [], ?int $ttlSeconds = null): void
+    {
+        $defaultTtl = (function_exists('config') && function_exists('app') && app()->bound('config'))
+            ? (int) config('gateway.embeddings_cache_ttl', self::DEFAULT_EMBEDDING_TTL)
+            : self::DEFAULT_EMBEDDING_TTL;
+        $ttl = $ttlSeconds ?? $defaultTtl;
+        $this->put($cacheKey, $response, $meta, $ttl);
+    }
+
+    /**
      * Purge all gateway response cache items.
      *
      * @return int Number of purged keys
@@ -194,7 +308,10 @@ class ResponseCacheService
             if ($driver === 'database') {
                 $tableName = config('cache.stores.database.table', 'cache');
                 $purgedCount = DB::table($tableName)
-                    ->where('key', 'like', '%' . self::KEY_PREFIX . '%')
+                    ->where(function ($query) {
+                        $query->where('key', 'like', '%' . self::KEY_PREFIX . '%')
+                            ->orWhere('key', 'like', '%' . self::EMBEDDING_KEY_PREFIX . '%');
+                    })
                     ->delete();
             } else {
                 // Generic flush or fallback
