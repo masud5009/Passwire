@@ -120,7 +120,12 @@ class AdminDashboardController extends Controller
             'accounts' => fn ($q) => $q->orderBy('priority', 'asc')
         ])->where('is_active', true)->get();
 
-        return view('dashboard.playground', compact('combos', 'providers'));
+        // Setup gating: playground stays locked until a provider is created
+        // and at least one active provider API key (account) is connected.
+        $hasProviders = AiProvider::count() > 0;
+        $hasProviderKeys = ProviderAccount::where('is_active', true)->count() > 0;
+
+        return view('dashboard.playground', compact('combos', 'providers', 'hasProviders', 'hasProviderKeys'));
     }
 
     /**

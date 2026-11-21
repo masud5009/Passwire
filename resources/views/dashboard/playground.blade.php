@@ -91,7 +91,105 @@
 @endphp
 
 @section('content')
-<div x-data="{
+@if(!$hasProviders || !$hasProviderKeys)
+    <!-- ============================================================== -->
+    <!-- SETUP GATE: PLAYGROUND LOCKED UNTIL PROVIDER + API KEY EXIST   -->
+    <!-- ============================================================== -->
+    <div class="min-h-[60vh] flex items-center justify-center">
+        <div class="w-full max-w-2xl bg-[#121215] border border-white/[0.07] rounded-3xl p-8 sm:p-12 shadow-lg text-center relative overflow-hidden">
+            <div class="absolute -top-24 left-1/2 -translate-x-1/2 w-72 h-72 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none"></div>
+
+            <div class="relative">
+                <div class="w-16 h-16 mx-auto rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-6">
+                    <i data-lucide="{{ !$hasProviders ? 'plug-zap' : 'key-round' }}" class="w-8 h-8 text-emerald-400"></i>
+                </div>
+
+                <h2 class="text-2xl sm:text-3xl font-bold text-white mb-3">
+                    @if(!$hasProviders)
+                        Add Your AI Provider First
+                    @else
+                        Connect a Provider API Key
+                    @endif
+                </h2>
+                <p class="text-sm text-zinc-400 max-w-md mx-auto leading-relaxed mb-10">
+                    @if(!$hasProviders)
+                        The Live AI Studio Playground needs at least one AI provider with a connected API key before you can start experimenting. Begin by adding your first provider.
+                    @else
+                        You've added your provider — great start! Now connect an active API key for it so the gateway has credentials to route your playground requests.
+                    @endif
+                </p>
+
+                <!-- Setup Steps -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-10 text-left">
+                    <!-- Step 1: Provider -->
+                    <div class="rounded-2xl p-5 border {{ $hasProviders ? 'border-emerald-500/25 bg-emerald-500/[0.06]' : 'border-emerald-500/40 bg-emerald-500/[0.08] ring-1 ring-emerald-500/30' }}">
+                        <div class="flex items-center gap-2.5 mb-2">
+                            <span class="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold {{ $hasProviders ? 'bg-emerald-500 text-white' : 'bg-emerald-500 text-white' }}">
+                                @if($hasProviders)
+                                    <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                                @else
+                                    1
+                                @endif
+                            </span>
+                            <span class="text-sm font-bold {{ $hasProviders ? 'text-emerald-400' : 'text-white' }}">Add AI Provider</span>
+                        </div>
+                        <p class="text-xs {{ $hasProviders ? 'text-emerald-400/70' : 'text-zinc-400' }} leading-relaxed">
+                            @if($hasProviders)
+                                Done — your provider is registered.
+                            @else
+                                Register a provider (OpenAI, Anthropic, Gemini, etc.) to unlock the gateway.
+                            @endif
+                        </p>
+                    </div>
+
+                    <!-- Step 2: API Key -->
+                    <div class="rounded-2xl p-5 border {{ $hasProviderKeys ? 'border-emerald-500/25 bg-emerald-500/[0.06]' : ($hasProviders ? 'border-amber-500/40 bg-amber-500/[0.08] ring-1 ring-amber-500/30' : 'border-white/[0.07] bg-white/[0.02] opacity-60') }}">
+                        <div class="flex items-center gap-2.5 mb-2">
+                            <span class="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold {{ $hasProviderKeys ? 'bg-emerald-500 text-white' : ($hasProviders ? 'bg-amber-500 text-white' : 'bg-zinc-700 text-zinc-300') }}">
+                                @if($hasProviderKeys)
+                                    <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                                @else
+                                    2
+                                @endif
+                            </span>
+                            <span class="text-sm font-bold {{ $hasProviderKeys ? 'text-emerald-400' : ($hasProviders ? 'text-amber-400' : 'text-zinc-500') }}">Connect API Key</span>
+                        </div>
+                        <p class="text-xs {{ $hasProviderKeys ? 'text-emerald-400/70' : ($hasProviders ? 'text-amber-400/80' : 'text-zinc-500') }} leading-relaxed">
+                            @if($hasProviderKeys)
+                                Done — an active key is connected.
+                            @elseif($hasProviders)
+                                Open your provider's page and add an active API key.
+                            @else
+                                Unlocked after you add a provider.
+                            @endif
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Call to Action -->
+                @if(!$hasProviders)
+                    <a href="{{ route('dashboard.providers') }}"
+                        class="inline-flex items-center gap-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-400 text-white text-sm font-semibold rounded-xl shadow-md transition-all">
+                        <i data-lucide="plus" class="w-4 h-4"></i>
+                        <span>Add Your First Provider</span>
+                    </a>
+                @else
+                    <a href="{{ route('dashboard.providers.show', \App\Models\AiProvider::first()) }}"
+                        class="inline-flex items-center gap-2 px-6 py-3 bg-amber-500 hover:bg-amber-400 text-white text-sm font-semibold rounded-xl shadow-md transition-all">
+                        <i data-lucide="key-round" class="w-4 h-4"></i>
+                        <span>Add API Key to Provider</span>
+                    </a>
+                @endif
+
+                <p class="mt-8 text-[11px] text-zinc-600 font-mono flex items-center justify-center gap-2">
+                    <i data-lucide="lock" class="w-3 h-3"></i>
+                    Playground is locked until both steps are complete
+                </p>
+            </div>
+        </div>
+    </div>
+@else
+    <div x-data="{
         playModel: '{{ $defaultPlayModel }}',
         customPlayModel: '',
         useCustomModel: false,
@@ -548,4 +646,5 @@
         </div>
     </div>
 </div>
+@endif
 @endsection

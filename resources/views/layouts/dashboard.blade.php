@@ -300,25 +300,41 @@
             <!-- Scrollable Content Body -->
             <div class="flex-1 overflow-y-auto p-6 space-y-6 bg-[#090b10] bg-[radial-gradient(rgba(255,255,255,0.035)_1px,transparent_1px)] [background-size:24px_24px]">
 
-                <!-- Global Success Alert -->
-                @if(session('success'))
-                    <div class="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm flex items-center justify-between shadow-lg">
-                        <div class="flex items-center gap-2.5">
-                            <i data-lucide="check-circle" class="w-5 h-5 text-emerald-400 flex-shrink-0"></i>
-                            <span>{{ session('success') }}</span>
-                        </div>
-                        <button type="button" @click="$el.parentElement.remove()" class="text-emerald-500 hover:text-emerald-300 text-base">&times;</button>
-                    </div>
-                @endif
-
-                @if(isset($errors) && $errors->any())
-                    <div class="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm flex items-center justify-between shadow-lg">
-                        <div class="flex items-center gap-2.5">
-                            <i data-lucide="alert-circle" class="w-5 h-5 text-red-400 flex-shrink-0"></i>
-                            <span>{{ $errors->first() }}</span>
-                        </div>
-                        <button type="button" @click="$el.parentElement.remove()" class="text-red-500 hover:text-red-300 text-base">&times;</button>
-                    </div>
+                <!-- Flash Messages -> SweetAlert2 Toasts -->
+                @if(session('success') || (isset($errors) && $errors->any()))
+                    <script>
+                        document.addEventListener('DOMContentLoaded', function () {
+                            const FlashToast = Swal.mixin({
+                                toast: true,
+                                position: 'top-end',
+                                showConfirmButton: false,
+                                timer: 4000,
+                                timerProgressBar: true,
+                                didOpen: (t) => {
+                                    t.onmouseenter = Swal.stopTimer;
+                                    t.onmouseleave = Swal.resumeTimer;
+                                }
+                            });
+                            @if(session('success'))
+                            FlashToast.fire({
+                                icon: 'success',
+                                title: @js(session('success')),
+                                background: '#0f172a',
+                                color: '#34d399',
+                                iconColor: '#34d399'
+                            });
+                            @endif
+                            @if(isset($errors) && $errors->any())
+                            FlashToast.fire({
+                                icon: 'error',
+                                title: @js($errors->first()),
+                                background: '#0f172a',
+                                color: '#fb7185',
+                                iconColor: '#fb7185'
+                            });
+                            @endif
+                        });
+                    </script>
                 @endif
 
                 <!-- Content Slot for Dedicated Route Views -->
